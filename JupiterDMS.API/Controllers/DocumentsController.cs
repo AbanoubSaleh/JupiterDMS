@@ -12,6 +12,7 @@ namespace JupiterDMS.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 [Produces("application/json")]
 [Authorize]
 public class DocumentsController : ControllerBase
@@ -667,6 +668,88 @@ public class DocumentsController : ControllerBase
         {
             _logger.LogError(ex, "Error cancelling checkout for document {DocumentId}", id);
             return StatusCode(500, "An error occurred while cancelling the document checkout.");
+        }
+    }
+
+    /// <summary>
+    /// Gets documents in a library with optional folder filtering.
+    /// </summary>
+    /// <param name="libraryId">The library ID.</param>
+    /// <param name="folderId">Optional folder ID to filter by.</param>
+    /// <param name="page">Page number (default: 1).</param>
+    /// <param name="limit">Items per page (default: 50).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A paginated list of documents.</returns>
+    /// <response code="200">Documents retrieved successfully.</response>
+    /// <response code="403">Forbidden - Viewer access required.</response>
+    [HttpGet("list/{libraryId:guid}")]
+    [Authorize(Policy = DomainConstants.Auth.ViewerPolicy)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult> GetDocumentListAsync(
+        Guid libraryId,
+        [FromQuery] Guid? folderId = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 50,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Get documents by folder if specified, otherwise search all documents in the library
+            IEnumerable<DocumentDto> documents;
+
+            if (folderId.HasValue)
+            {
+                // Get documents from specific folder
+                documents = await _documentService.GetDocumentsByFolderAsync(folderId.Value, false, cancellationToken);
+            }
+            else
+            {
+                // Search all documents in the library (using empty search term to get all)
+                documents = await _documentService.SearchDocumentsAsync("", libraryId, null, cancellationToken);
+            }
+
+            var filteredDocs = documents;
+
+            // Apply pagination
+            var totalCount = filteredDocs.Count();
+            var pagedDocs = filteredDocs
+                .Skip((page - 1) * limit)
+                .Take(limit)
+                .Select(d => new
+                {
+                    id = d.Id,
+                    name = d.Name,
+                    description = d.Description,
+                    contentType = d.ContentType,
+                    fileSizeBytes = d.FileSizeBytes,
+                    version = d.CurrentVersion,
+                    isCheckedOut = d.CheckoutStatus == Domain.Enums.CheckoutStatus.CheckedOut,
+                    checkedOutBy = d.CheckedOutBy,
+                    createdOn = d.CreatedOn,
+                    createdBy = d.CreatedBy,
+                    modifiedOn = d.ModifiedOn,
+                    modifiedBy = d.ModifiedBy,
+                    libraryName = d.LibraryName,
+                    folderId = d.FolderId
+                });
+
+            return Ok(new
+            {
+                documents = pagedDocs,
+                pagination = new
+                {
+                    page = page,
+                    limit = limit,
+                    totalCount = totalCount,
+                    totalPages = (int)Math.Ceiling((double)totalCount / limit)
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving documents for library {LibraryId}", libraryId);
+            return StatusCode(500, "An error occurred while retrieving documents.");
         }
     }
 }

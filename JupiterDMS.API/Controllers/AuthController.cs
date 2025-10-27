@@ -13,6 +13,7 @@ namespace JupiterDMS.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 [Produces("application/json")]
 public class AuthController : ControllerBase
 {
@@ -256,6 +257,43 @@ public class AuthController : ControllerBase
         {
             _logger.LogError(ex, "Error validating token");
             return BadRequest("Invalid token.");
+        }
+    }
+
+    /// <summary>
+    /// Validates the current JWT token and session.
+    /// </summary>
+    /// <returns>Validation result.</returns>
+    /// <response code="200">Token is valid.</response>
+    /// <response code="401">Token is invalid or expired.</response>
+    [HttpGet("validate")]
+    [Authorize]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public IActionResult ValidateSession()
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
+            var usernameClaim = User.FindFirst(DomainConstants.Jwt.UsernameClaimType);
+
+            if (userIdClaim == null || usernameClaim == null)
+            {
+                return Unauthorized(new { valid = false, message = "Invalid token" });
+            }
+
+            return Ok(new
+            {
+                valid = true,
+                userId = userIdClaim.Value,
+                username = usernameClaim.Value,
+                message = "Token is valid"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating session");
+            return Unauthorized(new { valid = false, message = "Token validation failed" });
         }
     }
 }

@@ -36,8 +36,8 @@ public class DatabaseSeeder
             // Ensure database is created
             await _context.Database.EnsureCreatedAsync(cancellationToken);
 
-            // Seed admin user if not exists
-            await SeedAdminUserAsync(cancellationToken);
+            // Seed demo users if not exists
+            await SeedDemoUsersAsync(cancellationToken);
 
             // Seed default library if not exists
             await SeedDefaultLibraryAsync(cancellationToken);
@@ -53,42 +53,49 @@ public class DatabaseSeeder
     }
 
     /// <summary>
-    /// Seeds the default admin user.
+    /// Seeds demo users for different roles.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    private async Task SeedAdminUserAsync(CancellationToken cancellationToken)
+    private async Task SeedDemoUsersAsync(CancellationToken cancellationToken)
     {
-        const string adminUsername = "admin";
-        const string adminEmail = "admin@jupiterdms.com";
-
-        var existingAdmin = await _context.Users
-            .FirstOrDefaultAsync(u => u.Username == adminUsername || u.Email == adminEmail, cancellationToken);
-
-        if (existingAdmin == null)
+        var demoUsers = new[]
         {
-            var adminId = Guid.NewGuid();
-            var admin = new User
+            new { Username = "admin", Email = "admin@jupiterdms.com", FirstName = "System", LastName = "Administrator", Role = UserRole.Admin, Password = "Admin123!" },
+            new { Username = "editor", Email = "editor@jupiterdms.com", FirstName = "John", LastName = "Editor", Role = UserRole.Editor, Password = "Editor123!" },
+            new { Username = "viewer", Email = "viewer@jupiterdms.com", FirstName = "Jane", LastName = "Viewer", Role = UserRole.Viewer, Password = "Viewer123!" }
+        };
+
+        foreach (var demoUser in demoUsers)
+        {
+            var existingUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.Username == demoUser.Username || u.Email == demoUser.Email, cancellationToken);
+
+            if (existingUser == null)
             {
-                Id = adminId,
-                Username = adminUsername,
-                Email = adminEmail,
-                FirstName = "System",
-                LastName = "Administrator",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!", 12), // Default password
-                Role = UserRole.Admin,
-                IsActive = true,
-                IsDeleted = false,
-                CreatedOn = DateTime.UtcNow,
-                CreatedBy = adminId // Self-created
-            };
+                var userId = Guid.NewGuid();
+                var user = new User
+                {
+                    Id = userId,
+                    Username = demoUser.Username,
+                    Email = demoUser.Email,
+                    FirstName = demoUser.FirstName,
+                    LastName = demoUser.LastName,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(demoUser.Password, 12),
+                    Role = demoUser.Role,
+                    IsActive = true,
+                    IsDeleted = false,
+                    CreatedOn = DateTime.UtcNow,
+                    CreatedBy = userId // Self-created
+                };
 
-            _context.Users.Add(admin);
-            _logger.LogInformation("Created default admin user: {Username}", adminUsername);
-        }
-        else
-        {
-            _logger.LogInformation("Admin user already exists: {Username}", existingAdmin.Username);
+                _context.Users.Add(user);
+                _logger.LogInformation("Created demo user: {Username} with role {Role}", demoUser.Username, demoUser.Role);
+            }
+            else
+            {
+                _logger.LogInformation("Demo user already exists: {Username}", existingUser.Username);
+            }
         }
     }
 

@@ -11,6 +11,7 @@ namespace JupiterDMS.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 [Produces("application/json")]
 [Authorize]
 public class LibrariesController : ControllerBase
@@ -281,6 +282,42 @@ public class LibrariesController : ControllerBase
         {
             _logger.LogError(ex, "Error retrieving library by name {LibraryName}", name);
             return StatusCode(500, "An error occurred while retrieving the library.");
+        }
+    }
+
+    /// <summary>
+    /// Gets the library tree structure with folders.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The hierarchical library tree.</returns>
+    /// <response code="200">Library tree retrieved successfully.</response>
+    /// <response code="403">Forbidden - Viewer access required.</response>
+    [HttpGet("tree")]
+    [Authorize(Policy = DomainConstants.Auth.ViewerPolicy)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult> GetLibraryTreeAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var libraries = await _libraryService.GetAllLibrariesAsync(false, cancellationToken);
+
+            // For now, return a simple structure. This can be enhanced later with folder hierarchy
+            var libraryTree = libraries.Select(lib => new
+            {
+                id = lib.Id,
+                name = lib.Name,
+                description = lib.Description,
+                type = "library",
+                children = new object[] { } // Placeholder for folders
+            });
+
+            return Ok(libraryTree);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving library tree");
+            return StatusCode(500, "An error occurred while retrieving the library tree.");
         }
     }
 }

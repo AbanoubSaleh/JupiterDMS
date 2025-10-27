@@ -7,6 +7,7 @@ using JupiterDMS.Infrastructure.DataAccess.Persistence;
 using JupiterDMS.Infrastructure.Infra;
 using JupiterDMS.Infrastructure.Infra.Logging;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 
@@ -31,6 +32,41 @@ builder.Services.AddSwaggerGen(options =>
             Name = "JupiterDMS Team"
         }
     });
+
+    // Add JWT Bearer Authentication to Swagger
+    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\""
+    });
+
+    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement()
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+
+    // Configure Swagger to handle enums properly
+    options.UseInlineDefinitionsForEnums();
+
+    // Add custom schema filters to handle complex types
+    options.CustomSchemaIds(type => type.FullName?.Replace("+", "."));
+
+    // Configure to ignore circular references
+    options.SupportNonNullableReferenceTypes();
 
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
@@ -126,13 +162,26 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Map additional routes for v1 API compatibility with addins
+app.MapControllerRoute(
+    name: "api_v1",
+    pattern: "api/v1/{controller}/{action=Index}/{id?}");
+
 app.MapHealthChecks("/health");
 
-// Seed database on startup
+// Migrate and seed database on startup
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<JupiterDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<DatabaseSeeder>>();
+
+    // Automatically apply pending migrations
+    logger.LogInformation("Applying database migrations...");
+    await context.Database.MigrateAsync();
+    logger.LogInformation("Database migrations applied successfully");
+
+    // Seed initial data
     var seeder = new DatabaseSeeder(context, logger);
     await seeder.SeedAsync();
 }
