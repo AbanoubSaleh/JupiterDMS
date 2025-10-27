@@ -163,11 +163,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Map additional routes for v1 API compatibility with addins
-app.MapControllerRoute(
-    name: "api_v1",
-    pattern: "api/v1/{controller}/{action=Index}/{id?}");
-
 app.MapHealthChecks("/health");
 
 // Migrate and seed database on startup

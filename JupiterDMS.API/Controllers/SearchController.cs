@@ -10,7 +10,6 @@ namespace JupiterDMS.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[Route("api/v1/[controller]")]
 [Produces("application/json")]
 [Authorize]
 public class SearchController : ControllerBase

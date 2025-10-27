@@ -3,6 +3,8 @@ using JupiterDMS.Domain.Constants;
 using JupiterDMS.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using JupiterDMS.Application.Common.DTOs;
+using AutoMapper;
 
 namespace JupiterDMS.API.Controllers;
 
@@ -16,18 +18,22 @@ namespace JupiterDMS.API.Controllers;
 public class FoldersController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IMapper _mapper;
     private readonly ILogger<FoldersController> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FoldersController"/> class.
     /// </summary>
     /// <param name="unitOfWork">The unit of work.</param>
+    /// <param name="mapper">The AutoMapper instance.</param>
     /// <param name="logger">The logger.</param>
     public FoldersController(
         IUnitOfWork unitOfWork,
+        IMapper mapper,
         ILogger<FoldersController> logger)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -101,7 +107,7 @@ public class FoldersController : ControllerBase
     /// <summary>
     /// Creates a new folder.
     /// </summary>
-    /// <param name="folder">The folder to create.</param>
+    /// <param name="createFolderDto">The folder creation data (excludes auto-generated fields).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The created folder.</returns>
     /// <response code="201">Folder created successfully.</response>
@@ -113,7 +119,7 @@ public class FoldersController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<Folder>> CreateFolderAsync(
-        [FromBody] Folder folder,
+        [FromBody] CreateFolderDto createFolderDto,
         CancellationToken cancellationToken = default)
     {
         try
@@ -128,6 +134,9 @@ public class FoldersController : ControllerBase
             {
                 return Unauthorized();
             }
+
+            // Map DTO to entity
+            var folder = _mapper.Map<Folder>(createFolderDto);
 
             // Verify library exists
             var library = await _unitOfWork.Libraries.GetByIdAsync(folder.LibraryId, cancellationToken);
@@ -146,8 +155,8 @@ public class FoldersController : ControllerBase
                 }
 
                 // Build path based on parent folder
-                folder.Path = string.IsNullOrEmpty(parentFolder.Path) 
-                    ? $"/{folder.Name}" 
+                folder.Path = string.IsNullOrEmpty(parentFolder.Path)
+                    ? $"/{folder.Name}"
                     : $"{parentFolder.Path}/{folder.Name}";
             }
             else
@@ -155,6 +164,7 @@ public class FoldersController : ControllerBase
                 folder.Path = $"/{folder.Name}";
             }
 
+            // Set auto-generated fields
             folder.Id = Guid.NewGuid();
             folder.CreatedOn = DateTime.UtcNow;
             folder.CreatedBy = userId;

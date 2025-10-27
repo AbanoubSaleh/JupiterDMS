@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using JupiterDMS.Application.Services;
 using JupiterDMS.Domain.Entities;
 using JupiterDMS.Domain.Constants;
+using JupiterDMS.Application.Common.DTOs;
+using AutoMapper;
 
 namespace JupiterDMS.API.Controllers;
 
@@ -11,22 +13,24 @@ namespace JupiterDMS.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[Route("api/v1/[controller]")]
 [Produces("application/json")]
 [Authorize]
 public class LibrariesController : ControllerBase
 {
     private readonly ILibraryService _libraryService;
+    private readonly IMapper _mapper;
     private readonly ILogger<LibrariesController> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LibrariesController"/> class.
     /// </summary>
     /// <param name="libraryService">The library service.</param>
+    /// <param name="mapper">The AutoMapper instance.</param>
     /// <param name="logger">The logger.</param>
-    public LibrariesController(ILibraryService libraryService, ILogger<LibrariesController> logger)
+    public LibrariesController(ILibraryService libraryService, IMapper mapper, ILogger<LibrariesController> logger)
     {
         _libraryService = libraryService ?? throw new ArgumentNullException(nameof(libraryService));
+        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -96,7 +100,7 @@ public class LibrariesController : ControllerBase
     /// <summary>
     /// Creates a new library.
     /// </summary>
-    /// <param name="library">The library to create.</param>
+    /// <param name="createLibraryDto">The library creation data (excludes auto-generated fields).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The created library.</returns>
     /// <response code="201">Library created successfully.</response>
@@ -108,7 +112,7 @@ public class LibrariesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<Library>> CreateLibraryAsync(
-        [FromBody] Library library,
+        [FromBody] CreateLibraryDto createLibraryDto,
         CancellationToken cancellationToken = default)
     {
         try
@@ -124,6 +128,8 @@ public class LibrariesController : ControllerBase
                 return Unauthorized();
             }
 
+            // Map DTO to entity (auto-generated fields will be set in the service)
+            var library = _mapper.Map<Library>(createLibraryDto);
             var createdLibrary = await _libraryService.CreateLibraryAsync(library, userId, cancellationToken);
 
             _logger.LogInformation("Library created successfully: {LibraryName} (ID: {LibraryId}) by user {UserId}",
