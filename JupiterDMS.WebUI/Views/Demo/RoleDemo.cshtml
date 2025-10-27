@@ -1,0 +1,29 @@
+@{
+    ViewData["Title"] = $"{ViewBag.Role} Demo Page";
+}
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="alert alert-info">
+            <h4>@ViewBag.Role Access Level</h4>
+            <p>@ViewBag.Message</p>
+        </div>
+        
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Current User Information</h5>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><strong>Username:</strong> @User.Identity?.Name</li>
+                    <li class="list-group-item"><strong>Role:</strong> @User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</li>
+                    <li class="list-group-item"><strong>User ID:</strong> @User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value</li>
+                    <li class="list-group-item"><strong>Authenticated:</strong> @User.Identity?.IsAuthenticated</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="mt-3">
+            <a asp-action="Index" class="btn btn-primary">Back to Demo Index</a>
+            <a asp-controller="Home" asp-action="Index" class="btn btn-secondary">Home</a>
+        </div>
+    </div>
+</div>

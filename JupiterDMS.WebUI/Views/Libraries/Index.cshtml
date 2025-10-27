@@ -1,0 +1,340 @@
+@model IEnumerable<JupiterDMS.WebUI.Models.LibraryViewModel>
+
+@{
+    ViewData["Title"] = "Document Management System";
+}
+
+<style>
+    .dms-container {
+        height: calc(100vh - 120px);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .dms-toolbar {
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        padding: 8px 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .dms-content {
+        flex: 1;
+        display: flex;
+        overflow: hidden;
+    }
+
+    .dms-sidebar {
+        width: 300px;
+        border-right: 1px solid #dee2e6;
+        background: #fff;
+        overflow-y: auto;
+    }
+
+    .dms-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+    }
+
+    .dms-main-toolbar {
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        padding: 8px 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .dms-document-list {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .folder-tree {
+        padding: 16px;
+    }
+
+    .folder-tree ul {
+        list-style: none;
+        padding-left: 0;
+        margin: 0;
+    }
+
+    .folder-tree ul ul {
+        padding-left: 20px;
+    }
+
+    .folder-tree li {
+        margin: 2px 0;
+    }
+
+    .folder-item {
+        display: flex;
+        align-items: center;
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+        color: #333;
+    }
+
+    .folder-item:hover {
+        background: #e9ecef;
+        color: #333;
+        text-decoration: none;
+    }
+
+    .folder-item.selected {
+        background: #0d6efd;
+        color: white;
+    }
+
+    .folder-icon {
+        margin-right: 8px;
+        width: 16px;
+        text-align: center;
+    }
+
+    .document-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .document-table th,
+    .document-table td {
+        padding: 8px 12px;
+        text-align: left;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .document-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
+    .document-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .file-icon {
+        width: 16px;
+        height: 16px;
+        margin-right: 8px;
+    }
+
+    .btn-sm {
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+</style>
+
+<div class="dms-container">
+    <!-- Toolbar -->
+    <div class="dms-toolbar">
+        <button class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-plus"></i> New
+        </button>
+        <button class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-upload"></i> Upload
+        </button>
+        <div class="ms-auto">
+            <button class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-sync"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="dms-content">
+        <!-- Sidebar - Folder Tree -->
+        <div class="dms-sidebar">
+            <div class="folder-tree">
+                <h6 class="mb-3">Libraries</h6>
+                <ul>
+                    @if (Model?.Any() == true)
+                    {
+                        @foreach (var library in Model.Where(l => !l.IsDeleted))
+                        {
+                            <li>
+                                <a href="#" class="folder-item" data-library-id="@library.Id">
+                                    <i class="fas fa-folder folder-icon"></i>
+                                    @library.Name
+                                </a>
+                                <ul>
+                                    <li>
+                                        <a href="#" class="folder-item">
+                                            <i class="fas fa-folder folder-icon"></i>
+                                            Engineering
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="#" class="folder-item">
+                                            <i class="fas fa-folder folder-icon"></i>
+                                            G & A
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="#" class="folder-item">
+                                            <i class="fas fa-folder folder-icon"></i>
+                                            Marketing
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
+                        }
+                    }
+                    else
+                    {
+                        <li>
+                            <a href="#" class="folder-item selected">
+                                <i class="fas fa-folder folder-icon"></i>
+                                Default
+                            </a>
+                            <ul>
+                                <li>
+                                    <a href="#" class="folder-item">
+                                        <i class="fas fa-folder folder-icon"></i>
+                                        Engineering
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="#" class="folder-item">
+                                        <i class="fas fa-folder folder-icon"></i>
+                                        G & A
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="#" class="folder-item">
+                                        <i class="fas fa-folder folder-icon"></i>
+                                        Marketing
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="dms-main">
+            <!-- Document List Toolbar -->
+            <div class="dms-main-toolbar">
+                <button class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-search"></i> File search
+                </button>
+                <button class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-search-plus"></i> Full-text search
+                </button>
+                <div class="ms-auto">
+                    <button class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-sync"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Document List -->
+            <div class="dms-document-list">
+                <table class="document-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;">Type</th>
+                            <th>File Name</th>
+                            <th style="width: 150px;">Date Modified</th>
+                            <th style="width: 100px;">Size</th>
+                            <th style="width: 80px;">Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <i class="fas fa-file-word text-primary file-icon"></i>
+                            </td>
+                            <td>Project Requirements.docx</td>
+                            <td>2024-01-15 14:30</td>
+                            <td>245 KB</td>
+                            <td>95%</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <i class="fas fa-file-excel text-success file-icon"></i>
+                            </td>
+                            <td>Budget Analysis.xlsx</td>
+                            <td>2024-01-14 09:15</td>
+                            <td>1.2 MB</td>
+                            <td>88%</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <i class="fas fa-file-powerpoint text-warning file-icon"></i>
+                            </td>
+                            <td>Presentation Draft.pptx</td>
+                            <td>2024-01-13 16:45</td>
+                            <td>3.5 MB</td>
+                            <td>92%</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <i class="fas fa-file-pdf text-danger file-icon"></i>
+                            </td>
+                            <td>Technical Specification.pdf</td>
+                            <td>2024-01-12 11:20</td>
+                            <td>890 KB</td>
+                            <td>97%</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <i class="fas fa-file-word text-primary file-icon"></i>
+                            </td>
+                            <td>Meeting Notes.docx</td>
+                            <td>2024-01-11 13:10</td>
+                            <td>156 KB</td>
+                            <td>85%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle folder selection
+        document.querySelectorAll('.folder-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                // Remove selected class from all items
+                document.querySelectorAll('.folder-item').forEach(i => i.classList.remove('selected'));
+
+                // Add selected class to clicked item
+                this.classList.add('selected');
+
+                // Here you would typically load documents for the selected folder
+                console.log('Selected folder:', this.textContent.trim());
+            });
+        });
+
+        // Handle document table row selection
+        document.querySelectorAll('.document-table tbody tr').forEach(row => {
+            row.addEventListener('click', function() {
+                // Remove selection from other rows
+                document.querySelectorAll('.document-table tbody tr').forEach(r => r.style.backgroundColor = '');
+
+                // Highlight selected row
+                this.style.backgroundColor = '#e3f2fd';
+
+                console.log('Selected document:', this.cells[1].textContent);
+            });
+        });
+    });
+</script>
+

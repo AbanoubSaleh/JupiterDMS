@@ -1,0 +1,45 @@
+@{
+    ViewData["Title"] = "Demo Pages";
+}
+
+<div class="row">
+    <div class="col-md-12">
+        <h2>Role-Based Access Demo</h2>
+        <p>Test the different role-based access levels:</p>
+        
+        <div class="card-deck">
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Admin Only</h5>
+                    <p class="card-text">This page requires Admin role.</p>
+                    <a asp-action="Admin" class="btn btn-danger">Admin Page</a>
+                </div>
+            </div>
+            
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Editor Access</h5>
+                    <p class="card-text">This page requires Admin or Editor role.</p>
+                    <a asp-action="Editor" class="btn btn-warning">Editor Page</a>
+                </div>
+            </div>
+            
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Viewer Access</h5>
+                    <p class="card-text">This page is accessible to all authenticated users.</p>
+                    <a asp-action="Viewer" class="btn btn-success">Viewer Page</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <h4>Current User Info:</h4>
+            <ul>
+                <li><strong>Username:</strong> @User.Identity?.Name</li>
+                <li><strong>Role:</strong> @User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</li>
+                <li><strong>User ID:</strong> @User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value</li>
+            </ul>
+        </div>
+    </div>
+</div>

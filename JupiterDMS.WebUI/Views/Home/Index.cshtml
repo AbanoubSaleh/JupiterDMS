@@ -1,0 +1,44 @@
+@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome to JupiterDMS</h1>
+    <p>Enterprise Document Management System</p>
+    <p>
+        <a class="btn btn-primary btn-lg" asp-controller="Libraries" asp-action="Index">
+            Browse Libraries
+        </a>
+    </p>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">📚 Libraries</h5>
+                <p class="card-text">Organize your documents into libraries for better management.</p>
+                <a href="@Url.Action("Index", "Libraries")" class="btn btn-sm btn-primary">Manage Libraries</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">📁 Folders</h5>
+                <p class="card-text">Create hierarchical folder structures within libraries.</p>
+                <a href="#" class="btn btn-sm btn-primary">Coming Soon</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">📄 Documents</h5>
+                <p class="card-text">Upload, manage, and version your documents.</p>
+                <a href="#" class="btn btn-sm btn-primary">Coming Soon</a>
+            </div>
+        </div>
+    </div>
+</div>
+
