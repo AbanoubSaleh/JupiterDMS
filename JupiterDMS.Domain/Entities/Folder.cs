@@ -18,6 +18,11 @@ public class Folder : BaseEntity
     public string Path { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the description of the folder.
+    /// </summary>
+    public string? Description { get; set; }
+
+    /// <summary>
     /// Gets or sets the library identifier this folder belongs to.
     /// </summary>
     public Guid LibraryId { get; set; }

@@ -86,5 +86,22 @@ public interface IFileStorageService
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The file hash.</returns>
     Task<string> CalculateFileHashAsync(Stream fileStream, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates a library directory.
+    /// </summary>
+    /// <param name="libraryName">The library name.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    Task CreateLibraryDirectoryAsync(string libraryName, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates a folder directory within a library.
+    /// </summary>
+    /// <param name="libraryName">The library name.</param>
+    /// <param name="folderPath">The folder path within the library.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    Task CreateFolderDirectoryAsync(string libraryName, string folderPath, CancellationToken cancellationToken = default);
 }
 

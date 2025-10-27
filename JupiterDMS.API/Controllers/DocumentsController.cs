@@ -144,7 +144,7 @@ public class DocumentsController : ControllerBase
             _logger.LogInformation("Document uploaded successfully: {DocumentName} (ID: {DocumentId}) by user {UserId}", 
                 document.Name, document.Id, userId);
 
-            return CreatedAtAction(nameof(GetDocumentByIdAsync), new { id = document.Id }, document);
+            return StatusCode(StatusCodes.Status201Created, document);
         }
         catch (InvalidOperationException ex)
         {
@@ -168,14 +168,13 @@ public class DocumentsController : ControllerBase
     /// <response code="400">Invalid request.</response>
     /// <response code="404">Document not found.</response>
     /// <response code="403">Forbidden - Editor access required.</response>
-    [HttpPut("{id:guid}")]
+    [HttpPut]
     [Authorize(Policy = DomainConstants.Auth.EditorPolicy)]
     [ProducesResponseType(typeof(DocumentDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<DocumentDto>> UpdateDocumentAsync(
-        Guid id,
         [FromBody] UpdateDocumentDto request,
         CancellationToken cancellationToken = default)
     {
@@ -184,11 +183,6 @@ public class DocumentsController : ControllerBase
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
-            }
-
-            if (id != request.Id)
-            {
-                return BadRequest("ID in URL does not match ID in request body.");
             }
 
             var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
@@ -214,7 +208,7 @@ public class DocumentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating document {DocumentId}", id);
+            _logger.LogError(ex, "Error updating document {DocumentId}", request.Id);
             return StatusCode(500, "An error occurred while updating the document.");
         }
     }

@@ -38,5 +38,35 @@ public class CreateDtoMappingProfile : Profile
             .ForMember(dest => dest.ParentFolder, opt => opt.Ignore()) // Navigation property
             .ForMember(dest => dest.ChildFolders, opt => opt.Ignore()) // Navigation property
             .ForMember(dest => dest.Documents, opt => opt.Ignore()); // Navigation property
+
+        // Folder -> FolderDto
+        CreateMap<Folder, FolderDto>();
+
+        // Library -> LibraryDto
+        CreateMap<Library, LibraryDto>();
+
+        // UpdateLibraryDto -> Library
+        CreateMap<UpdateLibraryDto, Library>()
+            .ForMember(dest => dest.CreatedOn, opt => opt.Ignore()) // Auto-generated
+            .ForMember(dest => dest.CreatedBy, opt => opt.Ignore()) // Set from JWT token
+            .ForMember(dest => dest.ModifiedOn, opt => opt.Ignore()) // Auto-generated
+            .ForMember(dest => dest.ModifiedBy, opt => opt.Ignore()) // Set from JWT token
+            .ForMember(dest => dest.IsDeleted, opt => opt.Ignore()) // Auto-generated
+            .ForMember(dest => dest.Folders, opt => opt.Ignore()); // Navigation property
+
+        // UpdateFolderDto -> Folder
+        CreateMap<UpdateFolderDto, Folder>()
+            .ForMember(dest => dest.LibraryId, opt => opt.Ignore()) // Cannot be changed
+            .ForMember(dest => dest.ParentFolderId, opt => opt.Ignore()) // Cannot be changed
+            .ForMember(dest => dest.Path, opt => opt.Ignore()) // Calculated in controller
+            .ForMember(dest => dest.CreatedOn, opt => opt.Ignore()) // Auto-generated
+            .ForMember(dest => dest.CreatedBy, opt => opt.Ignore()) // Set from JWT token
+            .ForMember(dest => dest.ModifiedOn, opt => opt.Ignore()) // Auto-generated
+            .ForMember(dest => dest.ModifiedBy, opt => opt.Ignore()) // Set from JWT token
+            .ForMember(dest => dest.IsDeleted, opt => opt.Ignore()) // Auto-generated
+            .ForMember(dest => dest.Library, opt => opt.Ignore()) // Navigation property
+            .ForMember(dest => dest.ParentFolder, opt => opt.Ignore()) // Navigation property
+            .ForMember(dest => dest.ChildFolders, opt => opt.Ignore()) // Navigation property
+            .ForMember(dest => dest.Documents, opt => opt.Ignore()); // Navigation property
     }
 }

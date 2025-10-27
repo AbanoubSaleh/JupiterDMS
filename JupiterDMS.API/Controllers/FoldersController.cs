@@ -19,6 +19,7 @@ public class FoldersController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
+    private readonly IFileStorageService _fileStorageService;
     private readonly ILogger<FoldersController> _logger;
 
     /// <summary>
@@ -26,14 +27,17 @@ public class FoldersController : ControllerBase
     /// </summary>
     /// <param name="unitOfWork">The unit of work.</param>
     /// <param name="mapper">The AutoMapper instance.</param>
+    /// <param name="fileStorageService">The file storage service.</param>
     /// <param name="logger">The logger.</param>
     public FoldersController(
         IUnitOfWork unitOfWork,
         IMapper mapper,
+        IFileStorageService fileStorageService,
         ILogger<FoldersController> logger)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+        _fileStorageService = fileStorageService ?? throw new ArgumentNullException(nameof(fileStorageService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -47,9 +51,9 @@ public class FoldersController : ControllerBase
     /// <response code="403">Forbidden - Viewer access required.</response>
     [HttpGet("library/{libraryId:guid}")]
     [Authorize(Policy = DomainConstants.Auth.ViewerPolicy)]
-    [ProducesResponseType(typeof(IEnumerable<Folder>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IEnumerable<FolderDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<IEnumerable<Folder>>> GetFoldersByLibraryAsync(
+    public async Task<ActionResult<IEnumerable<FolderDto>>> GetFoldersByLibraryAsync(
         Guid libraryId,
         CancellationToken cancellationToken = default)
     {
@@ -60,7 +64,8 @@ public class FoldersController : ControllerBase
                 .Where(f => f.LibraryId == libraryId && !f.IsDeleted)
                 .OrderBy(f => f.Name);
 
-            return Ok(libraryFolders);
+            var folderDtos = _mapper.Map<IEnumerable<FolderDto>>(libraryFolders);
+            return Ok(folderDtos);
         }
         catch (Exception ex)
         {
@@ -80,10 +85,10 @@ public class FoldersController : ControllerBase
     /// <response code="403">Forbidden - Viewer access required.</response>
     [HttpGet("{id:guid}")]
     [Authorize(Policy = DomainConstants.Auth.ViewerPolicy)]
-    [ProducesResponseType(typeof(Folder), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FolderDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<Folder>> GetFolderByIdAsync(
+    public async Task<ActionResult<FolderDto>> GetFolderByIdAsync(
         Guid id,
         CancellationToken cancellationToken = default)
     {
@@ -95,7 +100,8 @@ public class FoldersController : ControllerBase
                 return NotFound($"Folder with ID '{id}' not found.");
             }
 
-            return Ok(folder);
+            var folderDto = _mapper.Map<FolderDto>(folder);
+            return Ok(folderDto);
         }
         catch (Exception ex)
         {
@@ -115,10 +121,10 @@ public class FoldersController : ControllerBase
     /// <response code="403">Forbidden - Editor access required.</response>
     [HttpPost]
     [Authorize(Policy = DomainConstants.Auth.EditorPolicy)]
-    [ProducesResponseType(typeof(Folder), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(FolderDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<Folder>> CreateFolderAsync(
+    public async Task<ActionResult<FolderDto>> CreateFolderAsync(
         [FromBody] CreateFolderDto createFolderDto,
         CancellationToken cancellationToken = default)
     {
@@ -170,13 +176,25 @@ public class FoldersController : ControllerBase
             folder.CreatedBy = userId;
             folder.IsDeleted = false;
 
+            // Create physical directory for the folder
+            try
+            {
+                await _fileStorageService.CreateFolderDirectoryAsync(library.Name, folder.Path.TrimStart('/'), cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating physical directory for folder: {FolderPath}", folder.Path);
+                return StatusCode(500, "An error occurred while creating the folder directory.");
+            }
+
             await _unitOfWork.Folders.AddAsync(folder, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation("Folder created successfully: {FolderName} (ID: {FolderId}) by user {UserId}", 
+            _logger.LogInformation("Folder created successfully: {FolderName} (ID: {FolderId}) by user {UserId}",
                 folder.Name, folder.Id, userId);
 
-            return CreatedAtAction(nameof(GetFolderByIdAsync), new { id = folder.Id }, folder);
+            var folderDto = _mapper.Map<FolderDto>(folder);
+            return StatusCode(StatusCodes.Status201Created, folderDto);
         }
         catch (Exception ex)
         {
@@ -196,15 +214,14 @@ public class FoldersController : ControllerBase
     /// <response code="400">Invalid request.</response>
     /// <response code="404">Folder not found.</response>
     /// <response code="403">Forbidden - Editor access required.</response>
-    [HttpPut("{id:guid}")]
+    [HttpPut]
     [Authorize(Policy = DomainConstants.Auth.EditorPolicy)]
-    [ProducesResponseType(typeof(Folder), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FolderDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<Folder>> UpdateFolderAsync(
-        Guid id,
-        [FromBody] Folder folder,
+    public async Task<ActionResult<FolderDto>> UpdateFolderAsync(
+        [FromBody] UpdateFolderDto updateFolderDto,
         CancellationToken cancellationToken = default)
     {
         try
@@ -214,25 +231,21 @@ public class FoldersController : ControllerBase
                 return BadRequest(ModelState);
             }
 
-            if (id != folder.Id)
-            {
-                return BadRequest("ID in URL does not match ID in request body.");
-            }
-
             var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
             if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
             {
                 return Unauthorized();
             }
 
-            var existingFolder = await _unitOfWork.Folders.GetByIdAsync(id, cancellationToken);
+            var existingFolder = await _unitOfWork.Folders.GetByIdAsync(updateFolderDto.Id, cancellationToken);
             if (existingFolder == null || existingFolder.IsDeleted)
             {
-                return NotFound($"Folder with ID '{id}' not found.");
+                return NotFound($"Folder with ID '{updateFolderDto.Id}' not found.");
             }
 
-            // Update properties
-            existingFolder.Name = folder.Name;
+            // Update properties from DTO
+            existingFolder.Name = updateFolderDto.Name;
+            existingFolder.Description = updateFolderDto.Description;
             existingFolder.ModifiedOn = DateTime.UtcNow;
             existingFolder.ModifiedBy = userId;
 
@@ -255,11 +268,12 @@ public class FoldersController : ControllerBase
             _logger.LogInformation("Folder updated successfully: {FolderName} (ID: {FolderId}) by user {UserId}", 
                 existingFolder.Name, existingFolder.Id, userId);
 
-            return Ok(existingFolder);
+            var folderDto = _mapper.Map<FolderDto>(existingFolder);
+            return Ok(folderDto);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating folder {FolderId}", id);
+            _logger.LogError(ex, "Error updating folder {FolderId}", updateFolderDto.Id);
             return StatusCode(500, "An error occurred while updating the folder.");
         }
     }

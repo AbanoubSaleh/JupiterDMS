@@ -134,7 +134,7 @@ public class AuthController : ControllerBase
             var userDto = _mapper.Map<UserDto>(createdUser);
 
             _logger.LogInformation("User {Username} registered successfully", createdUser.Username);
-            return CreatedAtAction(nameof(GetCurrentUser), new { id = createdUser.Id }, userDto);
+            return StatusCode(StatusCodes.Status201Created, userDto);
         }
         catch (Exception ex)
         {

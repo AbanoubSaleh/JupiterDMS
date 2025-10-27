@@ -301,5 +301,45 @@ public class FileStorageService : IFileStorageService
 
         return sanitized.ToString();
     }
+
+    /// <inheritdoc/>
+    public async Task CreateLibraryDirectoryAsync(string libraryName, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(libraryName))
+            throw new ArgumentException("Library name cannot be null or empty.", nameof(libraryName));
+
+        var sanitizedLibraryName = SanitizePathComponent(libraryName);
+        var libraryPath = Path.Combine(_storagePath, sanitizedLibraryName);
+
+        if (!Directory.Exists(libraryPath))
+        {
+            Directory.CreateDirectory(libraryPath);
+            _logger.LogInformation("Created library directory: {LibraryPath}", libraryPath);
+        }
+
+        await Task.CompletedTask;
+    }
+
+    /// <inheritdoc/>
+    public async Task CreateFolderDirectoryAsync(string libraryName, string folderPath, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(libraryName))
+            throw new ArgumentException("Library name cannot be null or empty.", nameof(libraryName));
+
+        if (string.IsNullOrWhiteSpace(folderPath))
+            throw new ArgumentException("Folder path cannot be null or empty.", nameof(folderPath));
+
+        var sanitizedLibraryName = SanitizePathComponent(libraryName);
+        var sanitizedFolderPath = SanitizeFolderPath(folderPath);
+        var fullFolderPath = Path.Combine(_storagePath, sanitizedLibraryName, sanitizedFolderPath);
+
+        if (!Directory.Exists(fullFolderPath))
+        {
+            Directory.CreateDirectory(fullFolderPath);
+            _logger.LogInformation("Created folder directory: {FolderPath}", fullFolderPath);
+        }
+
+        await Task.CompletedTask;
+    }
 }
 

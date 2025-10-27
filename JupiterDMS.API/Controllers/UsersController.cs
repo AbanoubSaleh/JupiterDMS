@@ -153,7 +153,7 @@ public class UsersController : ControllerBase
             var userDto = _mapper.Map<UserDto>(createdUser);
 
             _logger.LogInformation("User {Username} created successfully by {CurrentUserId}", createdUser.Username, currentUserId);
-            return CreatedAtAction(nameof(GetUserByIdAsync), new { id = createdUser.Id }, userDto);
+            return StatusCode(StatusCodes.Status201Created, userDto);
         }
         catch (InvalidOperationException ex)
         {
@@ -177,14 +177,13 @@ public class UsersController : ControllerBase
     /// <response code="400">Invalid request.</response>
     /// <response code="404">User not found.</response>
     /// <response code="403">Forbidden - Admin access required.</response>
-    [HttpPut("{id:guid}")]
+    [HttpPut]
     [Authorize(Policy = DomainConstants.Auth.AdminPolicy)]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<UserDto>> UpdateUserAsync(
-        Guid id,
         [FromBody] UpdateUserDto request,
         CancellationToken cancellationToken = default)
     {
@@ -193,11 +192,6 @@ public class UsersController : ControllerBase
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
-            }
-
-            if (id != request.Id)
-            {
-                return BadRequest("ID in URL does not match ID in request body.");
             }
 
             var user = _mapper.Map<User>(request);
@@ -214,7 +208,7 @@ public class UsersController : ControllerBase
             var updatedUser = await _userService.UpdateUserAsync(user, cancellationToken);
             var userDto = _mapper.Map<UserDto>(updatedUser);
 
-            _logger.LogInformation("User {UserId} updated successfully by {CurrentUserId}", id, currentUserId);
+            _logger.LogInformation("User {UserId} updated successfully by {CurrentUserId}", request.Id, currentUserId);
             return Ok(userDto);
         }
         catch (InvalidOperationException ex)
@@ -227,7 +221,7 @@ public class UsersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating user {UserId}", id);
+            _logger.LogError(ex, "Error updating user {UserId}", request.Id);
             return StatusCode(500, "An error occurred while updating the user.");
         }
     }

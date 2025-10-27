@@ -35,6 +35,11 @@ public static class DomainConstants
         /// Maximum length for folder path.
         /// </summary>
         public const int PathMaxLength = 2000;
+
+        /// <summary>
+        /// Maximum length for folder description.
+        /// </summary>
+        public const int DescriptionMaxLength = 1000;
     }
 
     /// <summary>

@@ -9,14 +9,17 @@ namespace JupiterDMS.Application.Services;
 public class LibraryService : ILibraryService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IFileStorageService _fileStorageService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LibraryService"/> class.
     /// </summary>
     /// <param name="unitOfWork">The unit of work.</param>
-    public LibraryService(IUnitOfWork unitOfWork)
+    /// <param name="fileStorageService">The file storage service.</param>
+    public LibraryService(IUnitOfWork unitOfWork, IFileStorageService fileStorageService)
     {
         _unitOfWork = unitOfWork;
+        _fileStorageService = fileStorageService;
     }
 
     /// <inheritdoc/>
@@ -55,6 +58,9 @@ public class LibraryService : ILibraryService
         library.CreatedOn = DateTime.UtcNow;
         library.CreatedBy = createdBy;
         library.IsDeleted = false;
+
+        // Create physical directory for the library
+        await _fileStorageService.CreateLibraryDirectoryAsync(library.Name, cancellationToken);
 
         await _unitOfWork.Libraries.AddAsync(library, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

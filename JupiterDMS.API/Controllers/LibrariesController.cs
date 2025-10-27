@@ -135,7 +135,7 @@ public class LibrariesController : ControllerBase
             _logger.LogInformation("Library created successfully: {LibraryName} (ID: {LibraryId}) by user {UserId}",
                 createdLibrary.Name, createdLibrary.Id, userId);
 
-            return CreatedAtAction(nameof(GetLibraryByIdAsync), new { id = createdLibrary.Id }, createdLibrary);
+            return StatusCode(StatusCodes.Status201Created, createdLibrary);
         }
         catch (InvalidOperationException ex)
         {
@@ -159,15 +159,14 @@ public class LibrariesController : ControllerBase
     /// <response code="400">Invalid request.</response>
     /// <response code="404">Library not found.</response>
     /// <response code="403">Forbidden - Admin access required.</response>
-    [HttpPut("{id:guid}")]
+    [HttpPut]
     [Authorize(Policy = DomainConstants.Auth.AdminPolicy)]
     [ProducesResponseType(typeof(Library), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<Library>> UpdateLibraryAsync(
-        Guid id,
-        [FromBody] Library library,
+        [FromBody] UpdateLibraryDto updateLibraryDto,
         CancellationToken cancellationToken = default)
     {
         try
@@ -177,17 +176,14 @@ public class LibrariesController : ControllerBase
                 return BadRequest(ModelState);
             }
 
-            if (id != library.Id)
-            {
-                return BadRequest("ID in URL does not match ID in request body.");
-            }
-
             var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
             if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
             {
                 return Unauthorized();
             }
 
+            // Map DTO to entity (auto-generated fields will be set in the service)
+            var library = _mapper.Map<Library>(updateLibraryDto);
             var updatedLibrary = await _libraryService.UpdateLibraryAsync(library, userId, cancellationToken);
 
             _logger.LogInformation("Library updated successfully: {LibraryName} (ID: {LibraryId}) by user {UserId}",
@@ -205,7 +201,7 @@ public class LibrariesController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating library {LibraryId}", id);
+            _logger.LogError(ex, "Error updating library {LibraryId}", updateLibraryDto.Id);
             return StatusCode(500, "An error occurred while updating the library.");
         }
     }

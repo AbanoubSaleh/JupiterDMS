@@ -28,6 +28,9 @@ public class FolderConfiguration : IEntityTypeConfiguration<Folder>
             .IsRequired()
             .HasMaxLength(DomainConstants.Folder.PathMaxLength);
 
+        builder.Property(f => f.Description)
+            .HasMaxLength(DomainConstants.Folder.DescriptionMaxLength);
+
         builder.Property(f => f.LibraryId)
             .IsRequired();
 
