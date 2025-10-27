@@ -1,0 +1,167 @@
+html {
+  font-size: 14px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+  margin-bottom: 60px;
+}
+
+.footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  white-space: nowrap;
+  line-height: 60px;
+}
+
+/* Custom styles for JupiterDMS */
+.navbar-brand {
+  font-weight: bold;
+  color: #0d6efd !important;
+}
+
+.card {
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card:hover {
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  transition: box-shadow 0.15s ease-in-out;
+}
+
+.btn-primary {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+
+.btn-primary:hover {
+  background-color: #0b5ed7;
+  border-color: #0a58ca;
+}
+
+/* Document management specific styles */
+.dms-container {
+  height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+}
+
+.dms-toolbar {
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dms-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.dms-sidebar {
+  width: 300px;
+  border-right: 1px solid #dee2e6;
+  background: #fff;
+  overflow-y: auto;
+}
+
+.dms-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+
+.folder-tree {
+  padding: 16px;
+}
+
+.folder-tree ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.folder-tree ul ul {
+  padding-left: 20px;
+}
+
+.folder-tree li {
+  margin: 2px 0;
+}
+
+.folder-item {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  color: #333;
+}
+
+.folder-item:hover {
+  background: #e9ecef;
+  color: #333;
+  text-decoration: none;
+}
+
+.folder-item.selected {
+  background: #0d6efd;
+  color: white;
+}
+
+.folder-icon {
+  margin-right: 8px;
+  width: 16px;
+  text-align: center;
+}
+
+.document-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.document-table th,
+.document-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.document-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.document-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.file-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+}

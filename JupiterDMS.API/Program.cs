@@ -3,6 +3,7 @@ using JupiterDMS.API.Middleware;
 using JupiterDMS.Application;
 using JupiterDMS.Domain.Constants;
 using JupiterDMS.Infrastructure.DataAccess;
+using JupiterDMS.Infrastructure.DataAccess.Persistence;
 using JupiterDMS.Infrastructure.Infra;
 using JupiterDMS.Infrastructure.Infra.Logging;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -126,6 +127,15 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHealthChecks("/health");
+
+// Seed database on startup
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<JupiterDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<DatabaseSeeder>>();
+    var seeder = new DatabaseSeeder(context, logger);
+    await seeder.SeedAsync();
+}
 
 try
 {

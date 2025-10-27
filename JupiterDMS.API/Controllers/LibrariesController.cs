@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using JupiterDMS.Application.Services;
 using JupiterDMS.Domain.Entities;
+using JupiterDMS.Domain.Constants;
 
 namespace JupiterDMS.API.Controllers;
 
@@ -10,56 +12,84 @@ namespace JupiterDMS.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
+[Authorize]
 public class LibrariesController : ControllerBase
 {
     private readonly ILibraryService _libraryService;
+    private readonly ILogger<LibrariesController> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LibrariesController"/> class.
     /// </summary>
     /// <param name="libraryService">The library service.</param>
-    public LibrariesController(ILibraryService libraryService)
+    /// <param name="logger">The logger.</param>
+    public LibrariesController(ILibraryService libraryService, ILogger<LibrariesController> logger)
     {
-        _libraryService = libraryService;
+        _libraryService = libraryService ?? throw new ArgumentNullException(nameof(libraryService));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
     /// Gets all libraries.
     /// </summary>
-    /// <param name="includeInactive">Whether to include inactive libraries.</param>
+    /// <param name="includeDeleted">Whether to include deleted libraries.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A collection of libraries.</returns>
+    /// <response code="200">Libraries retrieved successfully.</response>
+    /// <response code="403">Forbidden - Viewer access required.</response>
     [HttpGet]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<Library>>> GetAll(
-        [FromQuery] bool includeInactive = false,
+    [Authorize(Policy = DomainConstants.Auth.ViewerPolicy)]
+    [ProducesResponseType(typeof(IEnumerable<Library>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<IEnumerable<Library>>> GetAllLibrariesAsync(
+        [FromQuery] bool includeDeleted = false,
         CancellationToken cancellationToken = default)
     {
-        var libraries = await _libraryService.GetAllLibrariesAsync(includeInactive, cancellationToken);
-        return Ok(libraries);
+        try
+        {
+            var libraries = await _libraryService.GetAllLibrariesAsync(includeDeleted, cancellationToken);
+            return Ok(libraries);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving libraries");
+            return StatusCode(500, "An error occurred while retrieving libraries.");
+        }
     }
 
     /// <summary>
-    /// Gets a library by its identifier.
+    /// Gets a library by ID.
     /// </summary>
-    /// <param name="id">The library identifier.</param>
+    /// <param name="id">The library ID.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The library if found; otherwise, not found.</returns>
-    [HttpGet("{id}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    /// <returns>The library information.</returns>
+    /// <response code="200">Library retrieved successfully.</response>
+    /// <response code="404">Library not found.</response>
+    /// <response code="403">Forbidden - Viewer access required.</response>
+    [HttpGet("{id:guid}")]
+    [Authorize(Policy = DomainConstants.Auth.ViewerPolicy)]
+    [ProducesResponseType(typeof(Library), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<Library>> GetById(
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<Library>> GetLibraryByIdAsync(
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        var library = await _libraryService.GetLibraryByIdAsync(id, cancellationToken);
-
-        if (library == null)
+        try
         {
-            return NotFound();
-        }
+            var library = await _libraryService.GetLibraryByIdAsync(id, cancellationToken);
+            if (library == null)
+            {
+                return NotFound($"Library with ID '{id}' not found.");
+            }
 
-        return Ok(library);
+            return Ok(library);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving library {LibraryId}", id);
+            return StatusCode(500, "An error occurred while retrieving the library.");
+        }
     }
 
     /// <summary>
@@ -68,70 +98,190 @@ public class LibrariesController : ControllerBase
     /// <param name="library">The library to create.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The created library.</returns>
+    /// <response code="201">Library created successfully.</response>
+    /// <response code="400">Invalid request.</response>
+    /// <response code="403">Forbidden - Admin access required.</response>
     [HttpPost]
-    [ProducesResponseType(StatusCodes.Status201Created)]
+    [Authorize(Policy = DomainConstants.Auth.AdminPolicy)]
+    [ProducesResponseType(typeof(Library), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<Library>> Create(
-        Library library,
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<Library>> CreateLibraryAsync(
+        [FromBody] Library library,
         CancellationToken cancellationToken = default)
     {
-        var createdLibrary = await _libraryService.CreateLibraryAsync(library, cancellationToken);
-        return CreatedAtAction(nameof(GetById), new { id = createdLibrary.Id }, createdLibrary);
-    }
-
-    /// <summary>
-    /// Updates an existing library.
-    /// </summary>
-    /// <param name="id">The library identifier.</param>
-    /// <param name="library">The updated library data.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The updated library.</returns>
-    [HttpPut("{id}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<Library>> Update(
-        Guid id,
-        Library library,
-        CancellationToken cancellationToken = default)
-    {
-        if (id != library.Id)
-        {
-            return BadRequest("ID mismatch");
-        }
-
         try
         {
-            var updatedLibrary = await _libraryService.UpdateLibraryAsync(library, cancellationToken);
-            return Ok(updatedLibrary);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var createdLibrary = await _libraryService.CreateLibraryAsync(library, userId, cancellationToken);
+
+            _logger.LogInformation("Library created successfully: {LibraryName} (ID: {LibraryId}) by user {UserId}",
+                createdLibrary.Name, createdLibrary.Id, userId);
+
+            return CreatedAtAction(nameof(GetLibraryByIdAsync), new { id = createdLibrary.Id }, createdLibrary);
         }
-        catch (InvalidOperationException)
+        catch (InvalidOperationException ex)
         {
-            return NotFound();
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating library");
+            return StatusCode(500, "An error occurred while creating the library.");
         }
     }
 
     /// <summary>
-    /// Deletes a library.
+    /// Updates a library.
     /// </summary>
-    /// <param name="id">The library identifier.</param>
+    /// <param name="id">The library ID.</param>
+    /// <param name="library">The updated library information.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>No content.</returns>
-    [HttpDelete("{id}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    /// <returns>The updated library.</returns>
+    /// <response code="200">Library updated successfully.</response>
+    /// <response code="400">Invalid request.</response>
+    /// <response code="404">Library not found.</response>
+    /// <response code="403">Forbidden - Admin access required.</response>
+    [HttpPut("{id:guid}")]
+    [Authorize(Policy = DomainConstants.Auth.AdminPolicy)]
+    [ProducesResponseType(typeof(Library), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Delete(
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<Library>> UpdateLibraryAsync(
+        Guid id,
+        [FromBody] Library library,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (id != library.Id)
+            {
+                return BadRequest("ID in URL does not match ID in request body.");
+            }
+
+            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var updatedLibrary = await _libraryService.UpdateLibraryAsync(library, userId, cancellationToken);
+
+            _logger.LogInformation("Library updated successfully: {LibraryName} (ID: {LibraryId}) by user {UserId}",
+                updatedLibrary.Name, updatedLibrary.Id, userId);
+
+            return Ok(updatedLibrary);
+        }
+        catch (InvalidOperationException ex)
+        {
+            if (ex.Message.Contains("not found"))
+            {
+                return NotFound(ex.Message);
+            }
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating library {LibraryId}", id);
+            return StatusCode(500, "An error occurred while updating the library.");
+        }
+    }
+
+    /// <summary>
+    /// Deletes a library (soft delete).
+    /// </summary>
+    /// <param name="id">The library ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Success status.</returns>
+    /// <response code="200">Library deleted successfully.</response>
+    /// <response code="404">Library not found.</response>
+    /// <response code="403">Forbidden - Admin access required.</response>
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = DomainConstants.Auth.AdminPolicy)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> DeleteLibraryAsync(
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        var deleted = await _libraryService.DeleteLibraryAsync(id, cancellationToken);
-
-        if (!deleted)
+        try
         {
-            return NotFound();
-        }
+            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized();
+            }
 
-        return NoContent();
+            var success = await _libraryService.DeleteLibraryAsync(id, userId, cancellationToken);
+            if (!success)
+            {
+                return NotFound($"Library with ID '{id}' not found.");
+            }
+
+            _logger.LogInformation("Library deleted successfully: ID {LibraryId} by user {UserId}", id, userId);
+            return Ok("Library deleted successfully.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting library {LibraryId}", id);
+            return StatusCode(500, "An error occurred while deleting the library.");
+        }
+    }
+
+    /// <summary>
+    /// Gets a library by name.
+    /// </summary>
+    /// <param name="name">The library name.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The library information.</returns>
+    /// <response code="200">Library retrieved successfully.</response>
+    /// <response code="404">Library not found.</response>
+    /// <response code="403">Forbidden - Viewer access required.</response>
+    [HttpGet("by-name/{name}")]
+    [Authorize(Policy = DomainConstants.Auth.ViewerPolicy)]
+    [ProducesResponseType(typeof(Library), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<Library>> GetLibraryByNameAsync(
+        string name,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var library = await _libraryService.GetLibraryByNameAsync(name, cancellationToken);
+            if (library == null)
+            {
+                return NotFound($"Library with name '{name}' not found.");
+            }
+
+            return Ok(library);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving library by name {LibraryName}", name);
+            return StatusCode(500, "An error occurred while retrieving the library.");
+        }
     }
 }
 

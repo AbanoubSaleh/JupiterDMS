@@ -17,6 +17,17 @@ public interface IFileStorageService
     Task<string> SaveFileAsync(string fileName, Stream fileStream, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Saves a file asynchronously with library and folder structure.
+    /// </summary>
+    /// <param name="libraryName">The library name.</param>
+    /// <param name="folderPath">The folder path within the library.</param>
+    /// <param name="fileName">The file name.</param>
+    /// <param name="fileStream">The file stream.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The path where the file was saved.</returns>
+    Task<string> SaveFileAsync(string libraryName, string folderPath, string fileName, Stream fileStream, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Saves an uploaded file asynchronously with versioning support.
     /// </summary>
     /// <param name="file">The uploaded file.</param>
@@ -33,6 +44,24 @@ public interface IFileStorageService
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The file stream.</returns>
     Task<Stream> GetFileAsync(string filePath, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the file size in bytes.
+    /// </summary>
+    /// <param name="filePath">The full file path.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The file size in bytes.</returns>
+    Task<long> GetFileSizeAsync(string filePath, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Generates a unique file name if a file with the same name already exists.
+    /// </summary>
+    /// <param name="libraryName">The library name.</param>
+    /// <param name="folderPath">The folder path within the library.</param>
+    /// <param name="fileName">The original file name.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A unique file name.</returns>
+    Task<string> GenerateUniqueFileNameAsync(string libraryName, string folderPath, string fileName, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes a file asynchronously.

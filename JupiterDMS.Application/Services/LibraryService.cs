@@ -34,31 +34,58 @@ public class LibraryService : ILibraryService
     }
 
     /// <inheritdoc/>
-    public async Task<Library> CreateLibraryAsync(Library library, CancellationToken cancellationToken = default)
+    public async Task<Library?> GetLibraryByNameAsync(string name, CancellationToken cancellationToken = default)
     {
-        library.Id = Guid.NewGuid();
-        library.CreatedOn = DateTime.UtcNow;
-        library.CreatedBy = Guid.NewGuid(); // TODO: Get from current user service
-        
-        await _unitOfWork.Libraries.AddAsync(library, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-        
+        var libraries = await _unitOfWork.Libraries.GetAllAsync(cancellationToken);
+        var library = libraries.FirstOrDefault(l => l.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && !l.IsDeleted);
         return library;
     }
 
     /// <inheritdoc/>
-    public async Task<Library> UpdateLibraryAsync(Library library, CancellationToken cancellationToken = default)
+    public async Task<Library> CreateLibraryAsync(Library library, Guid createdBy, CancellationToken cancellationToken = default)
+    {
+        // Check if library name already exists
+        var existingLibrary = await GetLibraryByNameAsync(library.Name, cancellationToken);
+        if (existingLibrary != null)
+        {
+            throw new InvalidOperationException($"A library with the name '{library.Name}' already exists.");
+        }
+
+        library.Id = Guid.NewGuid();
+        library.CreatedOn = DateTime.UtcNow;
+        library.CreatedBy = createdBy;
+        library.IsDeleted = false;
+
+        await _unitOfWork.Libraries.AddAsync(library, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return library;
+    }
+
+    /// <inheritdoc/>
+    public async Task<Library> UpdateLibraryAsync(Library library, Guid updatedBy, CancellationToken cancellationToken = default)
     {
         var existingLibrary = await _unitOfWork.Libraries.GetByIdAsync(library.Id, cancellationToken);
         if (existingLibrary == null || existingLibrary.IsDeleted)
         {
-            throw new InvalidOperationException("Library not found or has been deleted.");
+            throw new InvalidOperationException($"Library with ID '{library.Id}' not found.");
+        }
+
+        // Check if new name conflicts with another library
+        if (!existingLibrary.Name.Equals(library.Name, StringComparison.OrdinalIgnoreCase))
+        {
+            var nameConflict = await GetLibraryByNameAsync(library.Name, cancellationToken);
+            if (nameConflict != null && nameConflict.Id != library.Id)
+            {
+                throw new InvalidOperationException($"A library with the name '{library.Name}' already exists.");
+            }
         }
 
         existingLibrary.Name = library.Name;
         existingLibrary.Description = library.Description;
+        existingLibrary.IsActive = library.IsActive;
         existingLibrary.ModifiedOn = DateTime.UtcNow;
-        existingLibrary.ModifiedBy = Guid.NewGuid(); // TODO: Get from current user service
+        existingLibrary.ModifiedBy = updatedBy;
 
         _unitOfWork.Libraries.Update(existingLibrary);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -67,7 +94,7 @@ public class LibraryService : ILibraryService
     }
 
     /// <inheritdoc/>
-    public async Task<bool> DeleteLibraryAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteLibraryAsync(Guid id, Guid deletedBy, CancellationToken cancellationToken = default)
     {
         var library = await _unitOfWork.Libraries.GetByIdAsync(id, cancellationToken);
         if (library == null || library.IsDeleted)
@@ -75,9 +102,17 @@ public class LibraryService : ILibraryService
             return false;
         }
 
+        // Check if library has folders
+        var folders = await _unitOfWork.Folders.GetAllAsync(cancellationToken);
+        var hasFolders = folders.Any(f => f.LibraryId == id && !f.IsDeleted);
+        if (hasFolders)
+        {
+            throw new InvalidOperationException("Cannot delete library that contains folders.");
+        }
+
         library.IsDeleted = true;
         library.ModifiedOn = DateTime.UtcNow;
-        library.ModifiedBy = Guid.NewGuid(); // TODO: Get from current user service
+        library.ModifiedBy = deletedBy;
 
         _unitOfWork.Libraries.Update(library);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

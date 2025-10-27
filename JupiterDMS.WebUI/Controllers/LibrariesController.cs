@@ -1,5 +1,6 @@
 using JupiterDMS.WebUI.Models;
 using JupiterDMS.WebUI.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace JupiterDMS.WebUI.Controllers;
@@ -7,6 +8,7 @@ namespace JupiterDMS.WebUI.Controllers;
 /// <summary>
 /// MVC controller for managing libraries in the UI.
 /// </summary>
+[Authorize]
 public class LibrariesController : Controller
 {
     private readonly JupiterDmsApiClient _apiClient;
@@ -32,6 +34,13 @@ public class LibrariesController : Controller
     {
         try
         {
+            // Set the JWT token for API calls
+            var token = User.FindFirst("Token")?.Value;
+            if (!string.IsNullOrEmpty(token))
+            {
+                _apiClient.SetAuthorizationToken(token);
+            }
+
             var libraries = await _apiClient.GetLibrariesAsync(cancellationToken: cancellationToken);
             return View(libraries ?? Enumerable.Empty<LibraryViewModel>());
         }
@@ -110,6 +119,62 @@ public class LibrariesController : Controller
             _logger.LogError(ex, "Error creating library");
             ModelState.AddModelError(string.Empty, "An error occurred while creating the library");
             return View(model);
+        }
+    }
+
+    /// <summary>
+    /// Gets folders for a library as JSON.
+    /// </summary>
+    /// <param name="libraryId">The library identifier.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>JSON result with folders.</returns>
+    [HttpGet]
+    public async Task<IActionResult> GetFolders(Guid libraryId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Set the JWT token for API calls
+            var token = User.FindFirst("Token")?.Value;
+            if (!string.IsNullOrEmpty(token))
+            {
+                _apiClient.SetAuthorizationToken(token);
+            }
+
+            var folders = await _apiClient.GetFolderTreeAsync(libraryId, cancellationToken);
+            return Json(folders ?? Enumerable.Empty<FolderTreeViewModel>());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving folders for library {LibraryId}", libraryId);
+            return Json(Enumerable.Empty<FolderTreeViewModel>());
+        }
+    }
+
+    /// <summary>
+    /// Gets documents for a folder as JSON.
+    /// </summary>
+    /// <param name="folderId">The folder identifier.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>JSON result with documents.</returns>
+    [HttpGet]
+    public async Task<IActionResult> GetDocuments(Guid folderId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Set the JWT token for API calls
+            var token = User.FindFirst("Token")?.Value;
+            if (!string.IsNullOrEmpty(token))
+            {
+                _apiClient.SetAuthorizationToken(token);
+            }
+
+            var documents = await _apiClient.GetDocumentsByFolderAsync(folderId, false, cancellationToken);
+            return Json(documents ?? Enumerable.Empty<DocumentViewModel>());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving documents for folder {FolderId}", folderId);
+            return Json(Enumerable.Empty<DocumentViewModel>());
         }
     }
 }

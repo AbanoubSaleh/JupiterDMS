@@ -1,5 +1,6 @@
 using JupiterDMS.WebUI.Models;
 using JupiterDMS.WebUI.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace JupiterDMS.WebUI.Controllers;
@@ -7,6 +8,7 @@ namespace JupiterDMS.WebUI.Controllers;
 /// <summary>
 /// MVC controller for managing documents in the UI.
 /// </summary>
+[Authorize]
 public class DocumentsController : Controller
 {
     private readonly JupiterDmsApiClient _apiClient;
@@ -21,6 +23,18 @@ public class DocumentsController : Controller
     {
         _apiClient = apiClient;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Sets the JWT token for API calls.
+    /// </summary>
+    private void SetApiToken()
+    {
+        var token = User.FindFirst("Token")?.Value;
+        if (!string.IsNullOrEmpty(token))
+        {
+            _apiClient.SetAuthorizationToken(token);
+        }
     }
 
     /// <summary>
@@ -61,6 +75,7 @@ public class DocumentsController : Controller
     {
         try
         {
+            SetApiToken();
             var folder = await _apiClient.GetFolderAsync(folderId, cancellationToken);
             if (folder == null)
             {
@@ -100,6 +115,7 @@ public class DocumentsController : Controller
 
         try
         {
+            SetApiToken();
             var result = await _apiClient.UploadDocumentAsync(model, cancellationToken);
 
             if (result != null)
@@ -116,6 +132,53 @@ public class DocumentsController : Controller
             _logger.LogError(ex, "Error uploading document");
             ModelState.AddModelError(string.Empty, "An error occurred while uploading the document");
             return View(model);
+        }
+    }
+
+    /// <summary>
+    /// Uploads a document via AJAX.
+    /// </summary>
+    /// <param name="file">The uploaded file.</param>
+    /// <param name="title">The document title.</param>
+    /// <param name="description">The document description.</param>
+    /// <param name="tags">The document tags.</param>
+    /// <param name="folderId">The folder identifier.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>JSON result.</returns>
+    [HttpPost]
+    public async Task<IActionResult> UploadAjax(IFormFile file, string title, string description, string tags, Guid folderId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest("No file selected");
+            }
+
+            SetApiToken();
+
+            var model = new UploadDocumentViewModel
+            {
+                File = file,
+                Title = title,
+                Description = description,
+                Tags = tags,
+                FolderId = folderId
+            };
+
+            var result = await _apiClient.UploadDocumentAsync(model, cancellationToken);
+
+            if (result != null)
+            {
+                return Json(new { success = true, message = "Document uploaded successfully", documentId = result.Id });
+            }
+
+            return BadRequest("Failed to upload document");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading document via AJAX");
+            return BadRequest($"An error occurred while uploading the document: {ex.Message}");
         }
     }
 

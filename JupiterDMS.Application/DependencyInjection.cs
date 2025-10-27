@@ -25,6 +25,7 @@ public static class DependencyInjection
         services.AddScoped<ILibraryService, LibraryService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IDocumentService, DocumentService>();
 
         // Register MediatR
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(assembly));
