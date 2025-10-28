@@ -4,6 +4,7 @@ using JupiterDMS.Application.Services;
 using JupiterDMS.Domain.Entities;
 using JupiterDMS.Domain.Constants;
 using JupiterDMS.Application.Common.DTOs;
+using JupiterDMS.Application.Common.Interfaces;
 using AutoMapper;
 
 namespace JupiterDMS.API.Controllers;
@@ -18,6 +19,7 @@ namespace JupiterDMS.API.Controllers;
 public class LibrariesController : ControllerBase
 {
     private readonly ILibraryService _libraryService;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
     private readonly ILogger<LibrariesController> _logger;
 
@@ -25,11 +27,13 @@ public class LibrariesController : ControllerBase
     /// Initializes a new instance of the <see cref="LibrariesController"/> class.
     /// </summary>
     /// <param name="libraryService">The library service.</param>
+    /// <param name="unitOfWork">The unit of work.</param>
     /// <param name="mapper">The AutoMapper instance.</param>
     /// <param name="logger">The logger.</param>
-    public LibrariesController(ILibraryService libraryService, IMapper mapper, ILogger<LibrariesController> logger)
+    public LibrariesController(ILibraryService libraryService, IUnitOfWork unitOfWork, IMapper mapper, ILogger<LibrariesController> logger)
     {
         _libraryService = libraryService ?? throw new ArgumentNullException(nameof(libraryService));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -44,16 +48,17 @@ public class LibrariesController : ControllerBase
     /// <response code="403">Forbidden - Viewer access required.</response>
     [HttpGet]
     [Authorize(Policy = DomainConstants.Auth.ViewerPolicy)]
-    [ProducesResponseType(typeof(IEnumerable<Library>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IEnumerable<LibraryDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<IEnumerable<Library>>> GetAllLibrariesAsync(
+    public async Task<ActionResult<IEnumerable<LibraryDto>>> GetAllLibrariesAsync(
         [FromQuery] bool includeDeleted = false,
         CancellationToken cancellationToken = default)
     {
         try
         {
             var libraries = await _libraryService.GetAllLibrariesAsync(includeDeleted, cancellationToken);
-            return Ok(libraries);
+            var libraryDtos = _mapper.Map<IEnumerable<LibraryDto>>(libraries);
+            return Ok(libraryDtos);
         }
         catch (Exception ex)
         {
@@ -73,10 +78,10 @@ public class LibrariesController : ControllerBase
     /// <response code="403">Forbidden - Viewer access required.</response>
     [HttpGet("{id:guid}")]
     [Authorize(Policy = DomainConstants.Auth.ViewerPolicy)]
-    [ProducesResponseType(typeof(Library), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(LibraryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<Library>> GetLibraryByIdAsync(
+    public async Task<ActionResult<LibraryDto>> GetLibraryByIdAsync(
         Guid id,
         CancellationToken cancellationToken = default)
     {
@@ -88,7 +93,8 @@ public class LibrariesController : ControllerBase
                 return NotFound($"Library with ID '{id}' not found.");
             }
 
-            return Ok(library);
+            var libraryDto = _mapper.Map<LibraryDto>(library);
+            return Ok(libraryDto);
         }
         catch (Exception ex)
         {
@@ -108,10 +114,10 @@ public class LibrariesController : ControllerBase
     /// <response code="403">Forbidden - Admin access required.</response>
     [HttpPost]
     [Authorize(Policy = DomainConstants.Auth.AdminPolicy)]
-    [ProducesResponseType(typeof(Library), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(LibraryDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<Library>> CreateLibraryAsync(
+    public async Task<ActionResult<LibraryDto>> CreateLibraryAsync(
         [FromBody] CreateLibraryDto createLibraryDto,
         CancellationToken cancellationToken = default)
     {
@@ -135,7 +141,8 @@ public class LibrariesController : ControllerBase
             _logger.LogInformation("Library created successfully: {LibraryName} (ID: {LibraryId}) by user {UserId}",
                 createdLibrary.Name, createdLibrary.Id, userId);
 
-            return StatusCode(StatusCodes.Status201Created, createdLibrary);
+            var libraryDto = _mapper.Map<LibraryDto>(createdLibrary);
+            return StatusCode(StatusCodes.Status201Created, libraryDto);
         }
         catch (InvalidOperationException ex)
         {
@@ -161,11 +168,11 @@ public class LibrariesController : ControllerBase
     /// <response code="403">Forbidden - Admin access required.</response>
     [HttpPut]
     [Authorize(Policy = DomainConstants.Auth.AdminPolicy)]
-    [ProducesResponseType(typeof(Library), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(LibraryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<Library>> UpdateLibraryAsync(
+    public async Task<ActionResult<LibraryDto>> UpdateLibraryAsync(
         [FromBody] UpdateLibraryDto updateLibraryDto,
         CancellationToken cancellationToken = default)
     {
@@ -189,7 +196,8 @@ public class LibrariesController : ControllerBase
             _logger.LogInformation("Library updated successfully: {LibraryName} (ID: {LibraryId}) by user {UserId}",
                 updatedLibrary.Name, updatedLibrary.Id, userId);
 
-            return Ok(updatedLibrary);
+            var libraryDto = _mapper.Map<LibraryDto>(updatedLibrary);
+            return Ok(libraryDto);
         }
         catch (InvalidOperationException ex)
         {
@@ -263,10 +271,10 @@ public class LibrariesController : ControllerBase
     /// <response code="403">Forbidden - Viewer access required.</response>
     [HttpGet("by-name/{name}")]
     [Authorize(Policy = DomainConstants.Auth.ViewerPolicy)]
-    [ProducesResponseType(typeof(Library), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(LibraryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<Library>> GetLibraryByNameAsync(
+    public async Task<ActionResult<LibraryDto>> GetLibraryByNameAsync(
         string name,
         CancellationToken cancellationToken = default)
     {
@@ -278,7 +286,8 @@ public class LibrariesController : ControllerBase
                 return NotFound($"Library with name '{name}' not found.");
             }
 
-            return Ok(library);
+            var libraryDto = _mapper.Map<LibraryDto>(library);
+            return Ok(libraryDto);
         }
         catch (Exception ex)
         {
@@ -303,15 +312,15 @@ public class LibrariesController : ControllerBase
         try
         {
             var libraries = await _libraryService.GetAllLibrariesAsync(false, cancellationToken);
+            var allFolders = await _unitOfWork.Folders.GetAllAsync(cancellationToken);
 
-            // For now, return a simple structure. This can be enhanced later with folder hierarchy
             var libraryTree = libraries.Select(lib => new
             {
                 id = lib.Id,
                 name = lib.Name,
                 description = lib.Description,
                 type = "library",
-                children = new object[] { } // Placeholder for folders
+                children = BuildFolderHierarchy(lib.Id, allFolders)
             });
 
             return Ok(libraryTree);
@@ -321,6 +330,53 @@ public class LibrariesController : ControllerBase
             _logger.LogError(ex, "Error retrieving library tree");
             return StatusCode(500, "An error occurred while retrieving the library tree.");
         }
+    }
+
+    /// <summary>
+    /// Builds the folder hierarchy for a library.
+    /// </summary>
+    /// <param name="libraryId">The library ID.</param>
+    /// <param name="allFolders">All folders in the system.</param>
+    /// <returns>The hierarchical folder structure.</returns>
+    private object[] BuildFolderHierarchy(Guid libraryId, IEnumerable<Folder> allFolders)
+    {
+        var libraryFolders = allFolders
+            .Where(f => f.LibraryId == libraryId && !f.IsDeleted)
+            .ToList();
+
+        // Get root folders (folders without parent)
+        var rootFolders = libraryFolders
+            .Where(f => f.ParentFolderId == null)
+            .OrderBy(f => f.Name)
+            .ToList();
+
+        return rootFolders.Select(folder => BuildFolderNode(folder, libraryFolders)).ToArray();
+    }
+
+    /// <summary>
+    /// Builds a folder node with its children.
+    /// </summary>
+    /// <param name="folder">The folder.</param>
+    /// <param name="allFolders">All folders in the library.</param>
+    /// <returns>The folder node.</returns>
+    private object BuildFolderNode(Folder folder, List<Folder> allFolders)
+    {
+        var children = allFolders
+            .Where(f => f.ParentFolderId == folder.Id)
+            .OrderBy(f => f.Name)
+            .Select(childFolder => BuildFolderNode(childFolder, allFolders))
+            .ToArray();
+
+        return new
+        {
+            id = folder.Id,
+            name = folder.Name,
+            description = folder.Description,
+            type = "folder",
+            path = folder.Path,
+            parentFolderId = folder.ParentFolderId,
+            children = children
+        };
     }
 }
 
