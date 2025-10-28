@@ -20,6 +20,7 @@ public class AuthController : ControllerBase
     private readonly IUserService _userService;
     private readonly IMapper _mapper;
     private readonly ILogger<AuthController> _logger;
+    private readonly IConfiguration _configuration;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AuthController"/> class.
@@ -28,16 +29,19 @@ public class AuthController : ControllerBase
     /// <param name="userService">The user service.</param>
     /// <param name="mapper">The AutoMapper instance.</param>
     /// <param name="logger">The logger.</param>
+    /// <param name="configuration">The configuration.</param>
     public AuthController(
         IAuthService authService,
         IUserService userService,
         IMapper mapper,
-        ILogger<AuthController> logger)
+        ILogger<AuthController> logger,
+        IConfiguration configuration)
     {
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
         _userService = userService ?? throw new ArgumentNullException(nameof(userService));
         _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
     }
 
     /// <summary>
@@ -78,10 +82,13 @@ public class AuthController : ControllerBase
             // Update last login time
             await _userService.UpdateLastLoginAsync(user.Id, cancellationToken);
 
+            // Get the configured expiry time from configuration
+            var expiryMinutes = _configuration.GetValue<int>(DomainConstants.Jwt.ExpiryMinutesConfigurationKey, DomainConstants.Jwt.DefaultExpiryMinutes);
+
             var response = new LoginResponseDto
             {
                 Token = token,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(DomainConstants.Jwt.DefaultExpiryMinutes),
+                ExpiresAt = DateTime.UtcNow.AddMinutes(expiryMinutes),
                 User = userDto
             };
 

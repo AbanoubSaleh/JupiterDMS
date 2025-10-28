@@ -186,9 +186,9 @@ public static class DomainConstants
         public const string RoleClaimType = "role";
 
         /// <summary>
-        /// Default token expiry in minutes.
+        /// Default token expiry in minutes (30 days = 43,200 minutes).
         /// </summary>
-        public const int DefaultExpiryMinutes = 60;
+        public const int DefaultExpiryMinutes = 43200;
     }
 
     /// <summary>
