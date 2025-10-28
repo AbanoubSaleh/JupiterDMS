@@ -37,6 +37,56 @@ public interface IDocumentService
     Task<DocumentDto> UploadDocumentAsync(UploadDocumentDto request, IFormFile file, Guid uploadedBy, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Uploads a new document with duplicate handling options.
+    /// </summary>
+    /// <param name="request">The document upload request.</param>
+    /// <param name="file">The uploaded file.</param>
+    /// <param name="uploadedBy">The user ID who uploaded the document.</param>
+    /// <param name="duplicateAction">Action to take if duplicate exists: "rename", "replace", "version".</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The created or updated document information.</returns>
+    Task<DocumentDto> UploadDocumentWithOptionsAsync(UploadDocumentDto request, IFormFile file, Guid uploadedBy, string duplicateAction = "rename", CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Checks if a document with the specified name exists in the given folder.
+    /// </summary>
+    /// <param name="name">The document name to check.</param>
+    /// <param name="folderId">The folder ID to check in.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>True if document exists, false otherwise.</returns>
+    Task<bool> DocumentExistsInFolderAsync(string name, Guid folderId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets an existing document by name and folder ID.
+    /// </summary>
+    /// <param name="name">The document name.</param>
+    /// <param name="folderId">The folder ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The existing document or null if not found.</returns>
+    Task<DocumentDto?> GetDocumentByNameAndFolderAsync(string name, Guid folderId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Generates a unique document name in the specified folder.
+    /// </summary>
+    /// <param name="baseName">The base document name.</param>
+    /// <param name="folderId">The folder ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A unique document name.</returns>
+    Task<string> GenerateUniqueDocumentNameAsync(string baseName, Guid folderId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Replaces an existing document with a new file.
+    /// </summary>
+    /// <param name="existingDocumentId">The ID of the existing document to replace.</param>
+    /// <param name="newFile">The new file to replace with.</param>
+    /// <param name="userId">The user ID performing the replacement.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The updated document information.</returns>
+    Task<DocumentDto> ReplaceDocumentAsync(Guid existingDocumentId, IFormFile newFile, Guid userId, CancellationToken cancellationToken = default);
+
+
+
+    /// <summary>
     /// Updates document metadata.
     /// </summary>
     /// <param name="request">The document update request.</param>

@@ -158,6 +158,112 @@ public class DocumentsController : ControllerBase
     }
 
     /// <summary>
+    /// Uploads a new document with duplicate handling options.
+    /// </summary>
+    /// <param name="request">The document upload request.</param>
+    /// <param name="file">The uploaded file.</param>
+    /// <param name="duplicateAction">Action to take if duplicate exists: "rename", "replace", "version".</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The created or updated document information.</returns>
+    /// <response code="201">Document uploaded successfully.</response>
+    /// <response code="400">Invalid request.</response>
+    /// <response code="403">Forbidden - Editor access required.</response>
+    [HttpPost("upload-with-options")]
+    [Authorize(Policy = DomainConstants.Auth.EditorPolicy)]
+    [ProducesResponseType(typeof(DocumentDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<DocumentDto>> UploadDocumentWithOptionsAsync(
+        [FromForm] UploadDocumentDto request,
+        IFormFile file,
+        [FromForm] string duplicateAction = "rename",
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest("File is required.");
+            }
+
+            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var document = await _documentService.UploadDocumentWithOptionsAsync(request, file, userId, duplicateAction, cancellationToken);
+
+            _logger.LogInformation("Document uploaded with options successfully: {DocumentName} (ID: {DocumentId}) by user {UserId}, action: {DuplicateAction}",
+                document.Name, document.Id, userId, duplicateAction);
+
+            return CreatedAtAction(nameof(GetDocumentByIdAsync), new { id = document.Id }, document);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading document with options");
+            return StatusCode(500, "An error occurred while uploading the document.");
+        }
+    }
+
+    /// <summary>
+    /// Checks if a document with the specified name exists in the given folder.
+    /// </summary>
+    /// <param name="name">The document name to check.</param>
+    /// <param name="folderId">The folder ID to check in.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Information about duplicate document existence.</returns>
+    /// <response code="200">Check completed successfully.</response>
+    /// <response code="400">Invalid request.</response>
+    [HttpGet("check-duplicate")]
+    [Authorize]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> CheckDuplicateNameAsync(
+        [FromQuery] string name,
+        [FromQuery] Guid folderId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return BadRequest("Document name is required.");
+            }
+
+            if (folderId == Guid.Empty)
+            {
+                return BadRequest("Folder ID is required.");
+            }
+
+            var exists = await _documentService.DocumentExistsInFolderAsync(name, folderId, cancellationToken);
+            var duplicateDocument = exists ? await _documentService.GetDocumentByNameAndFolderAsync(name, folderId, cancellationToken) : null;
+
+            return Ok(new {
+                exists,
+                duplicateDocument,
+                suggestedName = exists ? await _documentService.GenerateUniqueDocumentNameAsync(name, folderId, cancellationToken) : name
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking duplicate document name: {Name} in folder {FolderId}", name, folderId);
+            return StatusCode(500, "An error occurred while checking for duplicate names.");
+        }
+    }
+
+
+
+    /// <summary>
     /// Updates document metadata.
     /// </summary>
     /// <param name="id">The document ID.</param>

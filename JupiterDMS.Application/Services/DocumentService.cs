@@ -150,6 +150,74 @@ public class DocumentService : IDocumentService
     }
 
     /// <inheritdoc/>
+    public async Task<DocumentDto> UploadDocumentWithOptionsAsync(UploadDocumentDto request, IFormFile file, Guid uploadedBy, string duplicateAction = "rename", CancellationToken cancellationToken = default)
+    {
+        if (file == null || file.Length == 0)
+            throw new ArgumentException("File cannot be null or empty.", nameof(file));
+
+        // Check if document with same name exists in folder
+        var existingDocument = await GetDocumentByNameAndFolderAsync(request.Name, request.FolderId, cancellationToken);
+
+        if (existingDocument != null)
+        {
+            switch (duplicateAction.ToLowerInvariant())
+            {
+                case "replace":
+                    return await ReplaceDocumentAsync(existingDocument.Id, file, uploadedBy, cancellationToken);
+
+                case "version":
+                    return await CreateDocumentVersionAsync(existingDocument.Id, file, "Uploaded from Office Add-in", uploadedBy, cancellationToken);
+
+                case "rename":
+                default:
+                    // Generate unique name and proceed with normal upload
+                    request.Name = await GenerateUniqueDocumentNameAsync(request.Name, request.FolderId, cancellationToken);
+                    break;
+            }
+        }
+
+        // Proceed with normal upload
+        return await UploadDocumentAsync(request, file, uploadedBy, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> DocumentExistsInFolderAsync(string name, Guid folderId, CancellationToken cancellationToken = default)
+    {
+        var documents = await _unitOfWork.Documents.GetAllAsync(cancellationToken);
+        return documents.Any(d => !d.IsDeleted &&
+                                 d.FolderId == folderId &&
+                                 string.Equals(d.Name, name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <inheritdoc/>
+    public async Task<DocumentDto?> GetDocumentByNameAndFolderAsync(string name, Guid folderId, CancellationToken cancellationToken = default)
+    {
+        var documents = await _unitOfWork.Documents.GetAllAsync(cancellationToken);
+        var document = documents.FirstOrDefault(d => !d.IsDeleted &&
+                                                    d.FolderId == folderId &&
+                                                    string.Equals(d.Name, name, StringComparison.OrdinalIgnoreCase));
+
+        return document != null ? await MapDocumentToDto(document, cancellationToken) : null;
+    }
+
+    /// <inheritdoc/>
+    public async Task<string> GenerateUniqueDocumentNameAsync(string baseName, Guid folderId, CancellationToken cancellationToken = default)
+    {
+        var nameWithoutExtension = Path.GetFileNameWithoutExtension(baseName);
+        var extension = Path.GetExtension(baseName);
+        var counter = 1;
+        var uniqueName = baseName;
+
+        while (await DocumentExistsInFolderAsync(uniqueName, folderId, cancellationToken))
+        {
+            uniqueName = $"{nameWithoutExtension} ({counter}){extension}";
+            counter++;
+        }
+
+        return uniqueName;
+    }
+
+    /// <inheritdoc/>
     public async Task<DocumentDto> UpdateDocumentAsync(UpdateDocumentDto request, Guid updatedBy, CancellationToken cancellationToken = default)
     {
         var document = await _unitOfWork.Documents.GetByIdAsync(request.Id, cancellationToken);
@@ -376,6 +444,71 @@ public class DocumentService : IDocumentService
 
         _logger.LogInformation("New document version created: {DocumentName} v{Version} (ID: {DocumentId})",
             document.Name, newVersion, document.Id);
+
+        return await MapDocumentToDto(document, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<DocumentDto> ReplaceDocumentAsync(Guid existingDocumentId, IFormFile newFile, Guid userId, CancellationToken cancellationToken = default)
+    {
+        if (newFile == null || newFile.Length == 0)
+            throw new ArgumentException("File cannot be null or empty.", nameof(newFile));
+
+        var document = await _unitOfWork.Documents.GetByIdAsync(existingDocumentId, cancellationToken);
+        if (document == null || document.IsDeleted)
+            throw new InvalidOperationException($"Document with ID '{existingDocumentId}' not found.");
+
+        // Check if document is checked out by another user
+        if (document.CheckoutStatus == CheckoutStatus.CheckedOut && document.CheckedOutBy != userId)
+            throw new InvalidOperationException("Document is checked out by another user.");
+
+        // Get folder and library information
+        var folder = await _unitOfWork.Folders.GetByIdAsync(document.FolderId, cancellationToken);
+        var library = await _unitOfWork.Libraries.GetByIdAsync(folder!.LibraryId, cancellationToken);
+
+        // Calculate file hash
+        string fileHash;
+        using (var stream = newFile.OpenReadStream())
+        {
+            fileHash = await _fileStorageService.CalculateFileHashAsync(stream, cancellationToken);
+        }
+
+        // Save replacement file (overwrite existing)
+        string filePath;
+        using (var stream = newFile.OpenReadStream())
+        {
+            filePath = await _fileStorageService.SaveFileAsync(
+                library!.Name,
+                folder.Path?.TrimStart('/') ?? string.Empty,
+                newFile.FileName,
+                stream,
+                cancellationToken);
+        }
+
+        // Update document with new file information
+        document.FilePath = filePath;
+        document.FileSizeBytes = newFile.Length;
+        document.ContentType = newFile.ContentType ?? "application/octet-stream";
+        document.FileExtension = Path.GetExtension(newFile.FileName);
+        document.FileHash = fileHash;
+        document.FileType = GetFileType(newFile.FileName);
+        document.ModifiedOn = DateTime.UtcNow;
+        document.ModifiedBy = userId;
+
+        // If document was checked out, check it back in
+        if (document.CheckoutStatus == CheckoutStatus.CheckedOut)
+        {
+            document.CheckoutStatus = CheckoutStatus.Available;
+            document.CheckedOutBy = null;
+            document.CheckedOutOn = null;
+            document.CheckoutExpiry = null;
+        }
+
+        _unitOfWork.Documents.Update(document);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Document replaced successfully: {DocumentName} (ID: {DocumentId}) by user {UserId}",
+            document.Name, document.Id, userId);
 
         return await MapDocumentToDto(document, cancellationToken);
     }
