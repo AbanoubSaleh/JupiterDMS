@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Net.Http.Headers;
+using JupiterDMS.Application.Common.DTOs;
 using JupiterDMS.WebUI.Models;
 
 namespace JupiterDMS.WebUI.Services;
@@ -446,7 +447,17 @@ public class JupiterDmsApiClient
         EditDocumentViewModel model,
         CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.PutAsJsonAsync($"api/documents/{id}", model, cancellationToken);
+        // Create UpdateDocumentDto with the ID set
+        var updateDto = new UpdateDocumentDto
+        {
+            Id = id,
+            Name = model.Name,
+            Title = model.Title,
+            Description = model.Description,
+            Tags = model.Tags
+        };
+
+        var response = await _httpClient.PutAsJsonAsync($"api/documents/{id}", updateDto, cancellationToken);
         return response.IsSuccessStatusCode;
     }
 

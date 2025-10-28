@@ -130,7 +130,15 @@ public class DocumentsController : ControllerBase
 
             if (file == null || file.Length == 0)
             {
-                return BadRequest("File is required.");
+                return BadRequest(ErrorResponseDto.Create("File is required.", "FILE_REQUIRED"));
+            }
+
+            // Validate file type for Word documents (POC requirement)
+            if (!IsValidWordDocument(file))
+            {
+                return BadRequest(ErrorResponseDto.Create(
+                    "Only Microsoft Word documents (.doc, .docx) are supported in this POC.",
+                    "INVALID_FILE_TYPE"));
             }
 
             var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
@@ -188,7 +196,15 @@ public class DocumentsController : ControllerBase
 
             if (file == null || file.Length == 0)
             {
-                return BadRequest("File is required.");
+                return BadRequest(ErrorResponseDto.Create("File is required.", "FILE_REQUIRED"));
+            }
+
+            // Validate file type for Word documents (POC requirement)
+            if (!IsValidWordDocument(file))
+            {
+                return BadRequest(ErrorResponseDto.Create(
+                    "Only Microsoft Word documents (.doc, .docx) are supported in this POC.",
+                    "INVALID_FILE_TYPE"));
             }
 
             var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
@@ -274,13 +290,14 @@ public class DocumentsController : ControllerBase
     /// <response code="400">Invalid request.</response>
     /// <response code="404">Document not found.</response>
     /// <response code="403">Forbidden - Editor access required.</response>
-    [HttpPut]
+    [HttpPut("{id:guid}")]
     [Authorize(Policy = DomainConstants.Auth.EditorPolicy)]
     [ProducesResponseType(typeof(DocumentDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<DocumentDto>> UpdateDocumentAsync(
+        Guid id,
         [FromBody] UpdateDocumentDto request,
         CancellationToken cancellationToken = default)
     {
@@ -289,6 +306,14 @@ public class DocumentsController : ControllerBase
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
+            }
+
+            // Ensure the ID in the URL matches the ID in the request body
+            if (request.Id != id)
+            {
+                return BadRequest(ErrorResponseDto.Create(
+                    "The document ID in the URL must match the ID in the request body.",
+                    "ID_MISMATCH"));
             }
 
             var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
@@ -485,7 +510,15 @@ public class DocumentsController : ControllerBase
         {
             if (file == null || file.Length == 0)
             {
-                return BadRequest("File is required.");
+                return BadRequest(ErrorResponseDto.Create("File is required.", "FILE_REQUIRED"));
+            }
+
+            // Validate file type for Word documents (POC requirement)
+            if (!IsValidWordDocument(file))
+            {
+                return BadRequest(ErrorResponseDto.Create(
+                    "Only Microsoft Word documents (.doc, .docx) are supported in this POC.",
+                    "INVALID_FILE_TYPE"));
             }
 
             var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
@@ -850,5 +883,33 @@ public class DocumentsController : ControllerBase
             _logger.LogError(ex, "Error retrieving documents for library {LibraryId}", libraryId);
             return StatusCode(500, "An error occurred while retrieving documents.");
         }
+    }
+
+    /// <summary>
+    /// Validates if the uploaded file is a Microsoft Word document.
+    /// </summary>
+    /// <param name="file">The uploaded file.</param>
+    /// <returns>True if the file is a valid Word document, false otherwise.</returns>
+    private static bool IsValidWordDocument(IFormFile file)
+    {
+        if (file == null)
+            return false;
+
+        // Check file extension
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        var validExtensions = new[] { ".doc", ".docx" };
+
+        if (!validExtensions.Contains(extension))
+            return false;
+
+        // Check content type
+        var validContentTypes = new[]
+        {
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/octet-stream" // Sometimes Word files are uploaded with this content type
+        };
+
+        return validContentTypes.Contains(file.ContentType?.ToLowerInvariant());
     }
 }

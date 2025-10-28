@@ -169,7 +169,6 @@ public class UpdateDocumentDto
     /// <summary>
     /// Gets or sets the document ID.
     /// </summary>
-    [Required]
     public Guid Id { get; set; }
 
     /// <summary>

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using FluentValidation;
+using JupiterDMS.Application.Common.DTOs;
 using JupiterDMS.Domain.Exceptions;
 using Microsoft.AspNetCore.Http;
 
@@ -47,51 +48,38 @@ public class ExceptionHandlingMiddleware
     {
         context.Response.ContentType = "application/json";
 
-        var response = new ErrorResponse();
+        ErrorResponseDto response;
 
         switch (exception)
         {
             case ValidationException validationEx:
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
-                response.Message = "Validation failed";
-                response.Errors = validationEx.Errors
+                var validationErrors = validationEx.Errors
                     .GroupBy(e => e.PropertyName)
                     .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
+                response = ErrorResponseDto.Create("Validation failed", validationErrors);
+                response.Code = "VALIDATION_ERROR";
                 break;
 
             case EntityNotFoundException notFoundEx:
                 context.Response.StatusCode = StatusCodes.Status404NotFound;
-                response.Message = notFoundEx.Message;
+                response = ErrorResponseDto.Create(notFoundEx.Message, "ENTITY_NOT_FOUND");
                 break;
 
             case DomainException domainEx:
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
-                response.Message = domainEx.Message;
+                response = ErrorResponseDto.Create(domainEx.Message, "DOMAIN_ERROR");
                 break;
 
             default:
                 context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-                response.Message = "An internal server error occurred";
+                response = ErrorResponseDto.Create("An internal server error occurred", "INTERNAL_ERROR");
                 break;
         }
 
         return context.Response.WriteAsJsonAsync(response);
     }
 
-    /// <summary>
-    /// Error response model.
-    /// </summary>
-    private class ErrorResponse
-    {
-        /// <summary>
-        /// Gets or sets the error message.
-        /// </summary>
-        public string Message { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Gets or sets the validation errors.
-        /// </summary>
-        public Dictionary<string, string[]>? Errors { get; set; }
-    }
 }
 
