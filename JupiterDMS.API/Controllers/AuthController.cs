@@ -1,4 +1,5 @@
 using AutoMapper;
+using System.Security.Claims;
 using JupiterDMS.Application.Common.DTOs;
 using JupiterDMS.Application.Services;
 using JupiterDMS.Domain.Constants;
@@ -175,19 +176,19 @@ public class AuthController : ControllerBase
                 return BadRequest(ModelState);
             }
 
-            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            var emailClaim = User.FindFirst(ClaimTypes.Email);
+            if (emailClaim == null || string.IsNullOrEmpty(emailClaim.Value))
             {
                 return Unauthorized();
             }
 
-            var success = await _userService.ChangePasswordAsync(userId, request.CurrentPassword, request.NewPassword, cancellationToken);
+            var success = await _userService.ChangePasswordAsync(emailClaim.Value, request.CurrentPassword, request.NewPassword, cancellationToken);
             if (!success)
             {
                 return BadRequest("Current password is incorrect or new password is invalid.");
             }
 
-            _logger.LogInformation("User {UserId} changed password successfully", userId);
+            _logger.LogInformation("User {UserEmail} changed password successfully", emailClaim.Value);
             return Ok("Password changed successfully.");
         }
         catch (Exception ex)

@@ -84,7 +84,7 @@ public class UserService : IUserService
         user.PasswordHash = _authService.HashPassword(password);
         user.Id = Guid.NewGuid();
         user.CreatedOn = DateTime.UtcNow;
-        user.CreatedBy = user.Id; // Self-created for new users
+        user.CreatedBy = user.Email; // Self-created for new users
         user.IsActive = true;
         user.IsDeleted = false;
 
@@ -130,7 +130,7 @@ public class UserService : IUserService
     }
 
     /// <inheritdoc/>
-    public async Task<bool> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword, CancellationToken cancellationToken = default)
+    public async Task<bool> ChangePasswordAsync(string userEmail, string currentPassword, string newPassword, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(currentPassword) || string.IsNullOrWhiteSpace(newPassword))
             return false;
@@ -138,7 +138,7 @@ public class UserService : IUserService
         if (newPassword.Length < DomainConstants.Auth.MinPasswordLength)
             return false;
 
-        var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+        var user = await GetUserByEmailAsync(userEmail, cancellationToken);
         if (user == null || !user.IsActive)
             return false;
 
@@ -149,7 +149,7 @@ public class UserService : IUserService
         // Update password
         user.PasswordHash = _authService.HashPassword(newPassword);
         user.ModifiedOn = DateTime.UtcNow;
-        user.ModifiedBy = userId;
+        user.ModifiedBy = userEmail;
 
         await _userRepository.UpdateAsync(user, cancellationToken);
         await _userRepository.SaveChangesAsync(cancellationToken);
@@ -158,7 +158,7 @@ public class UserService : IUserService
     }
 
     /// <inheritdoc/>
-    public async Task<bool> ResetPasswordAsync(Guid userId, string newPassword, CancellationToken cancellationToken = default)
+    public async Task<bool> ResetPasswordAsync(string userEmail, string newPassword, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(newPassword))
             return false;
@@ -166,7 +166,7 @@ public class UserService : IUserService
         if (newPassword.Length < DomainConstants.Auth.MinPasswordLength)
             return false;
 
-        var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+        var user = await GetUserByEmailAsync(userEmail, cancellationToken);
         if (user == null)
             return false;
 

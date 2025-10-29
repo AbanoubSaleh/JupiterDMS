@@ -1,4 +1,5 @@
 using AutoMapper;
+using System.Security.Claims;
 using JupiterDMS.Application.Common.DTOs;
 using JupiterDMS.Application.Services;
 using JupiterDMS.Domain.Constants;
@@ -141,18 +142,18 @@ public class UsersController : ControllerBase
             var user = _mapper.Map<User>(request);
             
             // Set created by from current user
-            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
-            Guid? currentUserId = null;
-            if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var parsedUserId))
+            var emailClaim = User.FindFirst(ClaimTypes.Email);
+            string? currentUserEmail = null;
+            if (emailClaim != null && !string.IsNullOrEmpty(emailClaim.Value))
             {
-                currentUserId = parsedUserId;
-                user.CreatedBy = parsedUserId;
+                currentUserEmail = emailClaim.Value;
+                user.CreatedBy = emailClaim.Value;
             }
 
             var createdUser = await _userService.CreateUserAsync(user, request.Password, cancellationToken);
             var userDto = _mapper.Map<UserDto>(createdUser);
 
-            _logger.LogInformation("User {Username} created successfully by {CurrentUserId}", createdUser.Username, currentUserId);
+            _logger.LogInformation("User {Username} created successfully by {CurrentUserEmail}", createdUser.Username, currentUserEmail);
             return StatusCode(StatusCodes.Status201Created, userDto);
         }
         catch (InvalidOperationException ex)
@@ -197,18 +198,18 @@ public class UsersController : ControllerBase
             var user = _mapper.Map<User>(request);
             
             // Set modified by from current user
-            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
-            Guid? currentUserId = null;
-            if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var parsedUserId))
+            var emailClaim = User.FindFirst(ClaimTypes.Email);
+            string? currentUserEmail = null;
+            if (emailClaim != null && !string.IsNullOrEmpty(emailClaim.Value))
             {
-                currentUserId = parsedUserId;
-                user.ModifiedBy = parsedUserId;
+                currentUserEmail = emailClaim.Value;
+                user.ModifiedBy = emailClaim.Value;
             }
 
             var updatedUser = await _userService.UpdateUserAsync(user, cancellationToken);
             var userDto = _mapper.Map<UserDto>(updatedUser);
 
-            _logger.LogInformation("User {UserId} updated successfully by {CurrentUserId}", request.Id, currentUserId);
+            _logger.LogInformation("User {UserId} updated successfully by {CurrentUserEmail}", request.Id, currentUserEmail);
             return Ok(userDto);
         }
         catch (InvalidOperationException ex)
@@ -346,10 +347,17 @@ public class UsersController : ControllerBase
                 return BadRequest(ModelState);
             }
 
-            var success = await _userService.ResetPasswordAsync(id, request.NewPassword, cancellationToken);
-            if (!success)
+            // First get the user to find their email
+            var user = await _userService.GetUserByIdAsync(id, cancellationToken);
+            if (user == null)
             {
                 return NotFound($"User with ID '{id}' not found.");
+            }
+
+            var success = await _userService.ResetPasswordAsync(user.Email, request.NewPassword, cancellationToken);
+            if (!success)
+            {
+                return BadRequest("Failed to reset password.");
             }
 
             _logger.LogInformation("Password reset for user {UserId}", id);

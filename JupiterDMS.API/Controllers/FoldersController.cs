@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using JupiterDMS.Application.Common.Interfaces;
 using JupiterDMS.Domain.Constants;
 using JupiterDMS.Domain.Entities;
@@ -135,8 +136,8 @@ public class FoldersController : ControllerBase
                 return BadRequest(ModelState);
             }
 
-            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            var emailClaim = User.FindFirst(ClaimTypes.Email);
+            if (emailClaim == null || string.IsNullOrEmpty(emailClaim.Value))
             {
                 return Unauthorized();
             }
@@ -173,7 +174,7 @@ public class FoldersController : ControllerBase
             // Set auto-generated fields
             folder.Id = Guid.NewGuid();
             folder.CreatedOn = DateTime.UtcNow;
-            folder.CreatedBy = userId;
+            folder.CreatedBy = emailClaim.Value;
             folder.IsDeleted = false;
 
             // Create physical directory for the folder
@@ -190,8 +191,8 @@ public class FoldersController : ControllerBase
             await _unitOfWork.Folders.AddAsync(folder, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation("Folder created successfully: {FolderName} (ID: {FolderId}) by user {UserId}",
-                folder.Name, folder.Id, userId);
+            _logger.LogInformation("Folder created successfully: {FolderName} (ID: {FolderId}) by user {UserEmail}",
+                folder.Name, folder.Id, emailClaim.Value);
 
             var folderDto = _mapper.Map<FolderDto>(folder);
             return StatusCode(StatusCodes.Status201Created, folderDto);
@@ -231,8 +232,8 @@ public class FoldersController : ControllerBase
                 return BadRequest(ModelState);
             }
 
-            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            var emailClaim = User.FindFirst(ClaimTypes.Email);
+            if (emailClaim == null || string.IsNullOrEmpty(emailClaim.Value))
             {
                 return Unauthorized();
             }
@@ -247,7 +248,7 @@ public class FoldersController : ControllerBase
             existingFolder.Name = updateFolderDto.Name;
             existingFolder.Description = updateFolderDto.Description;
             existingFolder.ModifiedOn = DateTime.UtcNow;
-            existingFolder.ModifiedBy = userId;
+            existingFolder.ModifiedBy = emailClaim.Value;
 
             // Update path if name changed
             if (existingFolder.ParentFolderId.HasValue)
@@ -265,8 +266,8 @@ public class FoldersController : ControllerBase
             _unitOfWork.Folders.Update(existingFolder);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation("Folder updated successfully: {FolderName} (ID: {FolderId}) by user {UserId}", 
-                existingFolder.Name, existingFolder.Id, userId);
+            _logger.LogInformation("Folder updated successfully: {FolderName} (ID: {FolderId}) by user {UserEmail}",
+                existingFolder.Name, existingFolder.Id, emailClaim.Value);
 
             var folderDto = _mapper.Map<FolderDto>(existingFolder);
             return Ok(folderDto);
@@ -298,8 +299,8 @@ public class FoldersController : ControllerBase
     {
         try
         {
-            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            var emailClaim = User.FindFirst(ClaimTypes.Email);
+            if (emailClaim == null || string.IsNullOrEmpty(emailClaim.Value))
             {
                 return Unauthorized();
             }
@@ -329,13 +330,13 @@ public class FoldersController : ControllerBase
             // Soft delete
             folder.IsDeleted = true;
             folder.ModifiedOn = DateTime.UtcNow;
-            folder.ModifiedBy = userId;
+            folder.ModifiedBy = emailClaim.Value;
 
             _unitOfWork.Folders.Update(folder);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation("Folder deleted successfully: {FolderName} (ID: {FolderId}) by user {UserId}", 
-                folder.Name, folder.Id, userId);
+            _logger.LogInformation("Folder deleted successfully: {FolderName} (ID: {FolderId}) by user {UserEmail}",
+                folder.Name, folder.Id, emailClaim.Value);
 
             return Ok("Folder deleted successfully.");
         }

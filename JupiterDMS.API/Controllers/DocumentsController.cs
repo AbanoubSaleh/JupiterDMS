@@ -4,6 +4,7 @@ using JupiterDMS.Application.Services;
 using JupiterDMS.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace JupiterDMS.API.Controllers;
 
@@ -141,16 +142,16 @@ public class DocumentsController : ControllerBase
                     "INVALID_FILE_TYPE"));
             }
 
-            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            var emailClaim = User.FindFirst(ClaimTypes.Email);
+            if (emailClaim == null || string.IsNullOrEmpty(emailClaim.Value))
             {
                 return Unauthorized();
             }
 
-            var document = await _documentService.UploadDocumentAsync(request, file, userId, cancellationToken);
+            var document = await _documentService.UploadDocumentAsync(request, file, emailClaim.Value, cancellationToken);
 
-            _logger.LogInformation("Document uploaded successfully: {DocumentName} (ID: {DocumentId}) by user {UserId}", 
-                document.Name, document.Id, userId);
+            _logger.LogInformation("Document uploaded successfully: {DocumentName} (ID: {DocumentId}) by user {UserEmail}",
+                document.Name, document.Id, emailClaim.Value);
 
             return StatusCode(StatusCodes.Status201Created, document);
         }
@@ -207,18 +208,18 @@ public class DocumentsController : ControllerBase
                     "INVALID_FILE_TYPE"));
             }
 
-            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            var emailClaim = User.FindFirst(ClaimTypes.Email);
+            if (emailClaim == null || string.IsNullOrEmpty(emailClaim.Value))
             {
                 return Unauthorized();
             }
 
-            var document = await _documentService.UploadDocumentWithOptionsAsync(request, file, userId, duplicateAction, cancellationToken);
+            var document = await _documentService.UploadDocumentWithOptionsAsync(request, file, emailClaim.Value, duplicateAction, cancellationToken);
 
-            _logger.LogInformation("Document uploaded with options successfully: {DocumentName} (ID: {DocumentId}) by user {UserId}, action: {DuplicateAction}",
-                document.Name, document.Id, userId, duplicateAction);
+            _logger.LogInformation("Document uploaded with options successfully: {DocumentName} (ID: {DocumentId}) by user {UserEmail}, action: {DuplicateAction}",
+                document.Name, document.Id, emailClaim.Value, duplicateAction);
 
-            return CreatedAtAction(nameof(GetDocumentByIdAsync), new { id = document.Id }, document);
+            return StatusCode(StatusCodes.Status201Created, document);
         }
         catch (InvalidOperationException ex)
         {
@@ -316,16 +317,16 @@ public class DocumentsController : ControllerBase
                     "ID_MISMATCH"));
             }
 
-            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            var emailClaim = User.FindFirst(ClaimTypes.Email);
+            if (emailClaim == null || string.IsNullOrEmpty(emailClaim.Value))
             {
                 return Unauthorized();
             }
 
-            var document = await _documentService.UpdateDocumentAsync(request, userId, cancellationToken);
+            var document = await _documentService.UpdateDocumentAsync(request, emailClaim.Value, cancellationToken);
 
-            _logger.LogInformation("Document updated successfully: {DocumentName} (ID: {DocumentId}) by user {UserId}", 
-                document.Name, document.Id, userId);
+            _logger.LogInformation("Document updated successfully: {DocumentName} (ID: {DocumentId}) by user {UserEmail}",
+                document.Name, document.Id, emailClaim.Value);
 
             return Ok(document);
         }
@@ -399,19 +400,19 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            var emailClaim = User.FindFirst(ClaimTypes.Email);
+            if (emailClaim == null || string.IsNullOrEmpty(emailClaim.Value))
             {
                 return Unauthorized();
             }
 
-            var success = await _documentService.DeleteDocumentAsync(id, userId, cancellationToken);
+            var success = await _documentService.DeleteDocumentAsync(id, emailClaim.Value, cancellationToken);
             if (!success)
             {
                 return NotFound($"Document with ID '{id}' not found.");
             }
 
-            _logger.LogInformation("Document deleted successfully: ID {DocumentId} by user {UserId}", id, userId);
+            _logger.LogInformation("Document deleted successfully: ID {DocumentId} by user {UserEmail}", id, emailClaim.Value);
             return Ok("Document deleted successfully.");
         }
         catch (InvalidOperationException ex)
@@ -454,16 +455,16 @@ public class DocumentsController : ControllerBase
                 return BadRequest(ModelState);
             }
 
-            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            var emailClaim = User.FindFirst(ClaimTypes.Email);
+            if (emailClaim == null || string.IsNullOrEmpty(emailClaim.Value))
             {
                 return Unauthorized();
             }
 
-            var document = await _documentService.MoveDocumentAsync(id, request.TargetFolderId, userId, cancellationToken);
+            var document = await _documentService.MoveDocumentAsync(id, request.TargetFolderId, emailClaim.Value, cancellationToken);
 
-            _logger.LogInformation("Document moved successfully: {DocumentName} (ID: {DocumentId}) to folder {FolderId} by user {UserId}", 
-                document.Name, document.Id, request.TargetFolderId, userId);
+            _logger.LogInformation("Document moved successfully: {DocumentName} (ID: {DocumentId}) to folder {FolderId} by user {UserEmail}",
+                document.Name, document.Id, request.TargetFolderId, emailClaim.Value);
 
             return Ok(document);
         }
@@ -521,16 +522,16 @@ public class DocumentsController : ControllerBase
                     "INVALID_FILE_TYPE"));
             }
 
-            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            var emailClaim = User.FindFirst(ClaimTypes.Email);
+            if (emailClaim == null || string.IsNullOrEmpty(emailClaim.Value))
             {
                 return Unauthorized();
             }
 
-            var document = await _documentService.CreateDocumentVersionAsync(id, file, versionComment, userId, cancellationToken);
+            var document = await _documentService.CreateDocumentVersionAsync(id, file, versionComment, emailClaim.Value, cancellationToken);
 
-            _logger.LogInformation("Document version created successfully: {DocumentName} v{Version} (ID: {DocumentId}) by user {UserId}",
-                document.Name, document.CurrentVersion, document.Id, userId);
+            _logger.LogInformation("Document version created successfully: {DocumentName} v{Version} (ID: {DocumentId}) by user {UserEmail}",
+                document.Name, document.CurrentVersion, document.Id, emailClaim.Value);
 
             return Ok(document);
         }
@@ -675,19 +676,19 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            var emailClaim = User.FindFirst(ClaimTypes.Email);
+            if (emailClaim == null || string.IsNullOrEmpty(emailClaim.Value))
             {
                 return Unauthorized();
             }
 
-            var success = await _documentService.CheckOutDocumentAsync(id, userId, cancellationToken);
+            var success = await _documentService.CheckOutDocumentAsync(id, emailClaim.Value, cancellationToken);
             if (!success)
             {
                 return NotFound($"Document with ID '{id}' not found.");
             }
 
-            _logger.LogInformation("Document checked out successfully: ID {DocumentId} by user {UserId}", id, userId);
+            _logger.LogInformation("Document checked out successfully: ID {DocumentId} by user {UserEmail}", id, emailClaim.Value);
             return Ok("Document checked out successfully.");
         }
         catch (InvalidOperationException ex)
@@ -727,16 +728,16 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            var emailClaim = User.FindFirst(ClaimTypes.Email);
+            if (emailClaim == null || string.IsNullOrEmpty(emailClaim.Value))
             {
                 return Unauthorized();
             }
 
-            var document = await _documentService.CheckInDocumentAsync(id, file, versionComment, userId, cancellationToken);
+            var document = await _documentService.CheckInDocumentAsync(id, file, versionComment, emailClaim.Value, cancellationToken);
 
-            _logger.LogInformation("Document checked in successfully: {DocumentName} (ID: {DocumentId}) by user {UserId}",
-                document.Name, document.Id, userId);
+            _logger.LogInformation("Document checked in successfully: {DocumentName} (ID: {DocumentId}) by user {UserEmail}",
+                document.Name, document.Id, emailClaim.Value);
 
             return Ok(document);
         }
@@ -777,19 +778,19 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            var emailClaim = User.FindFirst(ClaimTypes.Email);
+            if (emailClaim == null || string.IsNullOrEmpty(emailClaim.Value))
             {
                 return Unauthorized();
             }
 
-            var success = await _documentService.CancelCheckOutAsync(id, userId, cancellationToken);
+            var success = await _documentService.CancelCheckOutAsync(id, emailClaim.Value, cancellationToken);
             if (!success)
             {
                 return NotFound($"Document with ID '{id}' not found or not checked out.");
             }
 
-            _logger.LogInformation("Document checkout cancelled successfully: ID {DocumentId} by user {UserId}", id, userId);
+            _logger.LogInformation("Document checkout cancelled successfully: ID {DocumentId} by user {UserEmail}", id, emailClaim.Value);
             return Ok("Document checkout cancelled successfully.");
         }
         catch (InvalidOperationException ex)

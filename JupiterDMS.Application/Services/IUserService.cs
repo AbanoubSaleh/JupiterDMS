@@ -65,7 +65,7 @@ public interface IUserService
     /// <param name="newPassword">The new password.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>True if the password was changed successfully; otherwise, false.</returns>
-    Task<bool> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword, CancellationToken cancellationToken = default);
+    Task<bool> ChangePasswordAsync(string userEmail, string currentPassword, string newPassword, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Resets a user's password (admin only).
@@ -74,7 +74,7 @@ public interface IUserService
     /// <param name="newPassword">The new password.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>True if the password was reset successfully; otherwise, false.</returns>
-    Task<bool> ResetPasswordAsync(Guid userId, string newPassword, CancellationToken cancellationToken = default);
+    Task<bool> ResetPasswordAsync(string userEmail, string newPassword, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Changes a user's role.

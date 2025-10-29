@@ -69,9 +69,9 @@ public class Document : BaseEntity
     public CheckoutStatus CheckoutStatus { get; set; } = CheckoutStatus.Available;
 
     /// <summary>
-    /// Gets or sets the user who has checked out the document.
+    /// Gets or sets the email of the user who has checked out the document.
     /// </summary>
-    public Guid? CheckedOutBy { get; set; }
+    public string? CheckedOutBy { get; set; }
 
     /// <summary>
     /// Gets or sets the date and time when the document was checked out.

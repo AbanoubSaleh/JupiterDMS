@@ -69,7 +69,7 @@ public class DocumentService : IDocumentService
     }
 
     /// <inheritdoc/>
-    public async Task<DocumentDto> UploadDocumentAsync(UploadDocumentDto request, IFormFile file, Guid uploadedBy, CancellationToken cancellationToken = default)
+    public async Task<DocumentDto> UploadDocumentAsync(UploadDocumentDto request, IFormFile file, string uploadedByEmail, CancellationToken cancellationToken = default)
     {
         if (file == null || file.Length == 0)
             throw new ArgumentException("File cannot be null or empty.", nameof(file));
@@ -122,7 +122,7 @@ public class DocumentService : IDocumentService
             FileType = GetFileType(file.FileName),
             CheckoutStatus = CheckoutStatus.Available,
             CreatedOn = DateTime.UtcNow,
-            CreatedBy = uploadedBy,
+            CreatedBy = uploadedByEmail,
             IsDeleted = false
         };
 
@@ -136,7 +136,7 @@ public class DocumentService : IDocumentService
             FileSizeBytes = file.Length,
             Comment = "Initial version",
             CreatedOn = DateTime.UtcNow,
-            CreatedBy = uploadedBy
+            CreatedBy = uploadedByEmail
         };
 
         // Save to database
@@ -150,7 +150,7 @@ public class DocumentService : IDocumentService
     }
 
     /// <inheritdoc/>
-    public async Task<DocumentDto> UploadDocumentWithOptionsAsync(UploadDocumentDto request, IFormFile file, Guid uploadedBy, string duplicateAction = "rename", CancellationToken cancellationToken = default)
+    public async Task<DocumentDto> UploadDocumentWithOptionsAsync(UploadDocumentDto request, IFormFile file, string uploadedByEmail, string duplicateAction = "rename", CancellationToken cancellationToken = default)
     {
         if (file == null || file.Length == 0)
             throw new ArgumentException("File cannot be null or empty.", nameof(file));
@@ -163,10 +163,10 @@ public class DocumentService : IDocumentService
             switch (duplicateAction.ToLowerInvariant())
             {
                 case "replace":
-                    return await ReplaceDocumentAsync(existingDocument.Id, file, uploadedBy, cancellationToken);
+                    return await ReplaceDocumentAsync(existingDocument.Id, file, uploadedByEmail, cancellationToken);
 
                 case "version":
-                    return await CreateDocumentVersionAsync(existingDocument.Id, file, "Uploaded from Office Add-in", uploadedBy, cancellationToken);
+                    return await CreateDocumentVersionAsync(existingDocument.Id, file, "Uploaded from Office Add-in", uploadedByEmail, cancellationToken);
 
                 case "rename":
                 default:
@@ -177,7 +177,7 @@ public class DocumentService : IDocumentService
         }
 
         // Proceed with normal upload
-        return await UploadDocumentAsync(request, file, uploadedBy, cancellationToken);
+        return await UploadDocumentAsync(request, file, uploadedByEmail, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -218,14 +218,14 @@ public class DocumentService : IDocumentService
     }
 
     /// <inheritdoc/>
-    public async Task<DocumentDto> UpdateDocumentAsync(UpdateDocumentDto request, Guid updatedBy, CancellationToken cancellationToken = default)
+    public async Task<DocumentDto> UpdateDocumentAsync(UpdateDocumentDto request, string updatedByEmail, CancellationToken cancellationToken = default)
     {
         var document = await _unitOfWork.Documents.GetByIdAsync(request.Id, cancellationToken);
         if (document == null || document.IsDeleted)
             throw new InvalidOperationException($"Document with ID '{request.Id}' not found.");
 
         // Check if document is checked out by another user
-        if (document.CheckoutStatus == CheckoutStatus.CheckedOut && document.CheckedOutBy != updatedBy)
+        if (document.CheckoutStatus == CheckoutStatus.CheckedOut && document.CheckedOutBy != updatedByEmail)
             throw new InvalidOperationException("Document is checked out by another user.");
 
         // Update document properties
@@ -235,7 +235,7 @@ public class DocumentService : IDocumentService
         document.Tags = request.Tags;
         document.Status = request.Status;
         document.ModifiedOn = DateTime.UtcNow;
-        document.ModifiedBy = updatedBy;
+        document.ModifiedBy = updatedByEmail;
 
         _unitOfWork.Documents.Update(document);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -267,7 +267,7 @@ public class DocumentService : IDocumentService
     }
 
     /// <inheritdoc/>
-    public async Task<bool> DeleteDocumentAsync(Guid id, Guid deletedBy, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteDocumentAsync(Guid id, string deletedByEmail, CancellationToken cancellationToken = default)
     {
         var document = await _unitOfWork.Documents.GetByIdAsync(id, cancellationToken);
         if (document == null || document.IsDeleted)
@@ -280,7 +280,7 @@ public class DocumentService : IDocumentService
         // Soft delete
         document.IsDeleted = true;
         document.ModifiedOn = DateTime.UtcNow;
-        document.ModifiedBy = deletedBy;
+        document.ModifiedBy = deletedByEmail;
 
         _unitOfWork.Documents.Update(document);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -291,7 +291,7 @@ public class DocumentService : IDocumentService
     }
 
     /// <inheritdoc/>
-    public async Task<DocumentDto> MoveDocumentAsync(Guid documentId, Guid targetFolderId, Guid movedBy, CancellationToken cancellationToken = default)
+    public async Task<DocumentDto> MoveDocumentAsync(Guid documentId, Guid targetFolderId, string movedByEmail, CancellationToken cancellationToken = default)
     {
         var document = await _unitOfWork.Documents.GetByIdAsync(documentId, cancellationToken);
         if (document == null || document.IsDeleted)
@@ -302,13 +302,13 @@ public class DocumentService : IDocumentService
             throw new InvalidOperationException($"Target folder with ID '{targetFolderId}' not found.");
 
         // Check if document is checked out
-        if (document.CheckoutStatus == CheckoutStatus.CheckedOut && document.CheckedOutBy != movedBy)
+        if (document.CheckoutStatus == CheckoutStatus.CheckedOut && document.CheckedOutBy != movedByEmail)
             throw new InvalidOperationException("Cannot move a document that is checked out by another user.");
 
         // Update folder
         document.FolderId = targetFolderId;
         document.ModifiedOn = DateTime.UtcNow;
-        document.ModifiedBy = movedBy;
+        document.ModifiedBy = movedByEmail;
 
         _unitOfWork.Documents.Update(document);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -331,14 +331,8 @@ public class DocumentService : IDocumentService
         var folder = await _unitOfWork.Folders.GetByIdAsync(document.FolderId, cancellationToken);
         var library = folder != null ? await _unitOfWork.Libraries.GetByIdAsync(folder.LibraryId, cancellationToken) : null;
 
-        // Get user information for created by and checked out by
-        var createdByUser = await _unitOfWork.Users.GetByIdAsync(document.CreatedBy, cancellationToken);
-        var checkedOutByUser = document.CheckedOutBy.HasValue 
-            ? await _unitOfWork.Users.GetByIdAsync(document.CheckedOutBy.Value, cancellationToken) 
-            : null;
-        var modifiedByUser = document.ModifiedBy.HasValue 
-            ? await _unitOfWork.Users.GetByIdAsync(document.ModifiedBy.Value, cancellationToken) 
-            : null;
+        // User information is now stored directly as email addresses
+        // No need to look up users since we store emails directly
 
         return new DocumentDto
         {
@@ -358,18 +352,18 @@ public class DocumentService : IDocumentService
             Tags = document.Tags,
             Status = document.Status,
             CheckoutStatus = document.CheckoutStatus,
-            CheckedOutBy = checkedOutByUser?.Username,
+            CheckedOutBy = document.CheckedOutBy,
             CheckedOutOn = document.CheckedOutOn,
             CheckoutExpiry = document.CheckoutExpiry,
             CreatedOn = document.CreatedOn,
-            CreatedBy = createdByUser?.Username ?? string.Empty,
+            CreatedBy = document.CreatedBy,
             ModifiedOn = document.ModifiedOn,
-            ModifiedBy = modifiedByUser?.Username
+            ModifiedBy = document.ModifiedBy
         };
     }
 
     /// <inheritdoc/>
-    public async Task<DocumentDto> CreateDocumentVersionAsync(Guid documentId, IFormFile file, string? versionComment, Guid uploadedBy, CancellationToken cancellationToken = default)
+    public async Task<DocumentDto> CreateDocumentVersionAsync(Guid documentId, IFormFile file, string? versionComment, string uploadedByEmail, CancellationToken cancellationToken = default)
     {
         if (file == null || file.Length == 0)
             throw new ArgumentException("File cannot be null or empty.", nameof(file));
@@ -379,7 +373,7 @@ public class DocumentService : IDocumentService
             throw new InvalidOperationException($"Document with ID '{documentId}' not found.");
 
         // Check if document is checked out by another user
-        if (document.CheckoutStatus == CheckoutStatus.CheckedOut && document.CheckedOutBy != uploadedBy)
+        if (document.CheckoutStatus == CheckoutStatus.CheckedOut && document.CheckedOutBy != uploadedByEmail)
             throw new InvalidOperationException("Document is checked out by another user.");
 
         // Get folder and library information
@@ -417,7 +411,7 @@ public class DocumentService : IDocumentService
             FileSizeBytes = file.Length,
             Comment = versionComment ?? $"Version {newVersion}",
             CreatedOn = DateTime.UtcNow,
-            CreatedBy = uploadedBy
+            CreatedBy = uploadedByEmail
         };
 
         // Update document
@@ -427,7 +421,7 @@ public class DocumentService : IDocumentService
         document.ContentType = file.ContentType ?? "application/octet-stream";
         document.FileHash = fileHash;
         document.ModifiedOn = DateTime.UtcNow;
-        document.ModifiedBy = uploadedBy;
+        document.ModifiedBy = uploadedByEmail;
 
         // If document was checked out, check it back in
         if (document.CheckoutStatus == CheckoutStatus.CheckedOut)
@@ -449,7 +443,7 @@ public class DocumentService : IDocumentService
     }
 
     /// <inheritdoc/>
-    public async Task<DocumentDto> ReplaceDocumentAsync(Guid existingDocumentId, IFormFile newFile, Guid userId, CancellationToken cancellationToken = default)
+    public async Task<DocumentDto> ReplaceDocumentAsync(Guid existingDocumentId, IFormFile newFile, string userEmail, CancellationToken cancellationToken = default)
     {
         if (newFile == null || newFile.Length == 0)
             throw new ArgumentException("File cannot be null or empty.", nameof(newFile));
@@ -459,7 +453,7 @@ public class DocumentService : IDocumentService
             throw new InvalidOperationException($"Document with ID '{existingDocumentId}' not found.");
 
         // Check if document is checked out by another user
-        if (document.CheckoutStatus == CheckoutStatus.CheckedOut && document.CheckedOutBy != userId)
+        if (document.CheckoutStatus == CheckoutStatus.CheckedOut && document.CheckedOutBy != userEmail)
             throw new InvalidOperationException("Document is checked out by another user.");
 
         // Get folder and library information
@@ -493,7 +487,7 @@ public class DocumentService : IDocumentService
         document.FileHash = fileHash;
         document.FileType = GetFileType(newFile.FileName);
         document.ModifiedOn = DateTime.UtcNow;
-        document.ModifiedBy = userId;
+        document.ModifiedBy = userEmail;
 
         // If document was checked out, check it back in
         if (document.CheckoutStatus == CheckoutStatus.CheckedOut)
@@ -507,8 +501,8 @@ public class DocumentService : IDocumentService
         _unitOfWork.Documents.Update(document);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Document replaced successfully: {DocumentName} (ID: {DocumentId}) by user {UserId}",
-            document.Name, document.Id, userId);
+        _logger.LogInformation("Document replaced successfully: {DocumentName} (ID: {DocumentId}) by user {UserEmail}",
+            document.Name, document.Id, userEmail);
 
         return await MapDocumentToDto(document, cancellationToken);
     }
@@ -525,8 +519,6 @@ public class DocumentService : IDocumentService
 
         foreach (var version in documentVersions)
         {
-            var createdByUser = await _unitOfWork.Users.GetByIdAsync(version.CreatedBy, cancellationToken);
-
             versionDtos.Add(new DocumentVersionDto
             {
                 Id = version.Id,
@@ -536,7 +528,7 @@ public class DocumentService : IDocumentService
                 FileSizeBytes = version.FileSizeBytes,
                 Comment = version.Comment,
                 CreatedOn = version.CreatedOn,
-                CreatedBy = createdByUser?.Username ?? string.Empty
+                CreatedBy = version.CreatedBy
             });
         }
 
@@ -618,7 +610,7 @@ public class DocumentService : IDocumentService
     }
 
     /// <inheritdoc/>
-    public async Task<bool> CheckOutDocumentAsync(Guid documentId, Guid checkedOutBy, CancellationToken cancellationToken = default)
+    public async Task<bool> CheckOutDocumentAsync(Guid documentId, string checkedOutByEmail, CancellationToken cancellationToken = default)
     {
         var document = await _unitOfWork.Documents.GetByIdAsync(documentId, cancellationToken);
         if (document == null || document.IsDeleted)
@@ -628,23 +620,23 @@ public class DocumentService : IDocumentService
             throw new InvalidOperationException("Document is already checked out.");
 
         document.CheckoutStatus = CheckoutStatus.CheckedOut;
-        document.CheckedOutBy = checkedOutBy;
+        document.CheckedOutBy = checkedOutByEmail;
         document.CheckedOutOn = DateTime.UtcNow;
         document.CheckoutExpiry = DateTime.UtcNow.AddHours(24); // 24-hour checkout period
         document.ModifiedOn = DateTime.UtcNow;
-        document.ModifiedBy = checkedOutBy;
+        document.ModifiedBy = checkedOutByEmail;
 
         _unitOfWork.Documents.Update(document);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Document checked out: {DocumentName} (ID: {DocumentId}) by user {UserId}",
-            document.Name, document.Id, checkedOutBy);
+        _logger.LogInformation("Document checked out: {DocumentName} (ID: {DocumentId}) by user {UserEmail}",
+            document.Name, document.Id, checkedOutByEmail);
 
         return true;
     }
 
     /// <inheritdoc/>
-    public async Task<DocumentDto> CheckInDocumentAsync(Guid documentId, IFormFile? file, string? versionComment, Guid checkedInBy, CancellationToken cancellationToken = default)
+    public async Task<DocumentDto> CheckInDocumentAsync(Guid documentId, IFormFile? file, string? versionComment, string checkedInByEmail, CancellationToken cancellationToken = default)
     {
         var document = await _unitOfWork.Documents.GetByIdAsync(documentId, cancellationToken);
         if (document == null || document.IsDeleted)
@@ -653,13 +645,13 @@ public class DocumentService : IDocumentService
         if (document.CheckoutStatus != CheckoutStatus.CheckedOut)
             throw new InvalidOperationException("Document is not checked out.");
 
-        if (document.CheckedOutBy != checkedInBy)
+        if (document.CheckedOutBy != checkedInByEmail)
             throw new InvalidOperationException("Document is checked out by another user.");
 
         // If a new file is provided, create a new version
         if (file != null && file.Length > 0)
         {
-            return await CreateDocumentVersionAsync(documentId, file, versionComment, checkedInBy, cancellationToken);
+            return await CreateDocumentVersionAsync(documentId, file, versionComment, checkedInByEmail, cancellationToken);
         }
         else
         {
@@ -669,20 +661,20 @@ public class DocumentService : IDocumentService
             document.CheckedOutOn = null;
             document.CheckoutExpiry = null;
             document.ModifiedOn = DateTime.UtcNow;
-            document.ModifiedBy = checkedInBy;
+            document.ModifiedBy = checkedInByEmail;
 
             _unitOfWork.Documents.Update(document);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation("Document checked in: {DocumentName} (ID: {DocumentId}) by user {UserId}",
-                document.Name, document.Id, checkedInBy);
+            _logger.LogInformation("Document checked in: {DocumentName} (ID: {DocumentId}) by user {UserEmail}",
+                document.Name, document.Id, checkedInByEmail);
 
             return await MapDocumentToDto(document, cancellationToken);
         }
     }
 
     /// <inheritdoc/>
-    public async Task<bool> CancelCheckOutAsync(Guid documentId, Guid cancelledBy, CancellationToken cancellationToken = default)
+    public async Task<bool> CancelCheckOutAsync(Guid documentId, string cancelledByEmail, CancellationToken cancellationToken = default)
     {
         var document = await _unitOfWork.Documents.GetByIdAsync(documentId, cancellationToken);
         if (document == null || document.IsDeleted)
@@ -691,7 +683,7 @@ public class DocumentService : IDocumentService
         if (document.CheckoutStatus != CheckoutStatus.CheckedOut)
             return false;
 
-        if (document.CheckedOutBy != cancelledBy)
+        if (document.CheckedOutBy != cancelledByEmail)
             throw new InvalidOperationException("Document is checked out by another user.");
 
         document.CheckoutStatus = CheckoutStatus.Available;
@@ -699,13 +691,13 @@ public class DocumentService : IDocumentService
         document.CheckedOutOn = null;
         document.CheckoutExpiry = null;
         document.ModifiedOn = DateTime.UtcNow;
-        document.ModifiedBy = cancelledBy;
+        document.ModifiedBy = cancelledByEmail;
 
         _unitOfWork.Documents.Update(document);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Document checkout cancelled: {DocumentName} (ID: {DocumentId}) by user {UserId}",
-            document.Name, document.Id, cancelledBy);
+        _logger.LogInformation("Document checkout cancelled: {DocumentName} (ID: {DocumentId}) by user {UserEmail}",
+            document.Name, document.Id, cancelledByEmail);
 
         return true;
     }

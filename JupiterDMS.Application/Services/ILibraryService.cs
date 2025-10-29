@@ -38,7 +38,7 @@ public interface ILibraryService
     /// <param name="createdBy">The user ID who is creating the library.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The created library.</returns>
-    Task<Library> CreateLibraryAsync(Library library, Guid createdBy, CancellationToken cancellationToken = default);
+    Task<Library> CreateLibraryAsync(Library library, string createdBy, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Updates an existing library.
@@ -47,7 +47,7 @@ public interface ILibraryService
     /// <param name="updatedBy">The user ID who is updating the library.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The updated library.</returns>
-    Task<Library> UpdateLibraryAsync(Library library, Guid updatedBy, CancellationToken cancellationToken = default);
+    Task<Library> UpdateLibraryAsync(Library library, string updatedBy, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes a library (soft delete).
@@ -56,5 +56,5 @@ public interface ILibraryService
     /// <param name="deletedBy">The user ID who is deleting the library.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>True if deleted successfully; otherwise, false.</returns>
-    Task<bool> DeleteLibraryAsync(Guid id, Guid deletedBy, CancellationToken cancellationToken = default);
+    Task<bool> DeleteLibraryAsync(Guid id, string deletedBy, CancellationToken cancellationToken = default);
 }

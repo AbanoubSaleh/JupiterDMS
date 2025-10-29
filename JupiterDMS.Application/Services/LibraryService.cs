@@ -45,7 +45,7 @@ public class LibraryService : ILibraryService
     }
 
     /// <inheritdoc/>
-    public async Task<Library> CreateLibraryAsync(Library library, Guid createdBy, CancellationToken cancellationToken = default)
+    public async Task<Library> CreateLibraryAsync(Library library, string createdBy, CancellationToken cancellationToken = default)
     {
         // Check if library name already exists
         var existingLibrary = await GetLibraryByNameAsync(library.Name, cancellationToken);
@@ -69,7 +69,7 @@ public class LibraryService : ILibraryService
     }
 
     /// <inheritdoc/>
-    public async Task<Library> UpdateLibraryAsync(Library library, Guid updatedBy, CancellationToken cancellationToken = default)
+    public async Task<Library> UpdateLibraryAsync(Library library, string updatedBy, CancellationToken cancellationToken = default)
     {
         var existingLibrary = await _unitOfWork.Libraries.GetByIdAsync(library.Id, cancellationToken);
         if (existingLibrary == null || existingLibrary.IsDeleted)
@@ -100,7 +100,7 @@ public class LibraryService : ILibraryService
     }
 
     /// <inheritdoc/>
-    public async Task<bool> DeleteLibraryAsync(Guid id, Guid deletedBy, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteLibraryAsync(Guid id, string deletedBy, CancellationToken cancellationToken = default)
     {
         var library = await _unitOfWork.Libraries.GetByIdAsync(id, cancellationToken);
         if (library == null || library.IsDeleted)

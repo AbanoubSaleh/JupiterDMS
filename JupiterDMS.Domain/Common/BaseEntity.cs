@@ -16,9 +16,9 @@ public abstract class BaseEntity
     public DateTime CreatedOn { get; set; }
 
     /// <summary>
-    /// Gets or sets the identifier of the user who created the entity.
+    /// Gets or sets the email of the user who created the entity.
     /// </summary>
-    public Guid CreatedBy { get; set; }
+    public string CreatedBy { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the date and time when the entity was last modified.
@@ -26,9 +26,9 @@ public abstract class BaseEntity
     public DateTime? ModifiedOn { get; set; }
 
     /// <summary>
-    /// Gets or sets the identifier of the user who last modified the entity.
+    /// Gets or sets the email of the user who last modified the entity.
     /// </summary>
-    public Guid? ModifiedBy { get; set; }
+    public string? ModifiedBy { get; set; }
 
     /// <summary>
     /// Gets or sets a value indicating whether the entity is deleted (soft delete).

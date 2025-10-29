@@ -86,7 +86,7 @@ public class DatabaseSeeder
                     IsActive = true,
                     IsDeleted = false,
                     CreatedOn = DateTime.UtcNow,
-                    CreatedBy = userId // Self-created
+                    CreatedBy = demoUser.Email // Self-created
                 };
 
                 _context.Users.Add(user);
@@ -126,13 +126,13 @@ public class DatabaseSeeder
                 IsActive = true,
                 IsDeleted = false,
                 CreatedOn = DateTime.UtcNow,
-                CreatedBy = admin?.Id ?? Guid.Empty
+                CreatedBy = admin?.Email ?? "system@jupiter.com"
             };
 
             _context.Libraries.Add(defaultLibrary);
 
             // Create default folders
-            await SeedDefaultFoldersAsync(defaultLibrary, admin?.Id ?? Guid.Empty, cancellationToken);
+            await SeedDefaultFoldersAsync(defaultLibrary, admin?.Email ?? "system@jupiter.com", cancellationToken);
 
             _logger.LogInformation("Created default library: {LibraryName}", defaultLibraryName);
         }
@@ -149,7 +149,7 @@ public class DatabaseSeeder
     /// <param name="createdBy">The user ID who created the folders.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    private async Task SeedDefaultFoldersAsync(Library library, Guid createdBy, CancellationToken cancellationToken)
+    private async Task SeedDefaultFoldersAsync(Library library, string createdBy, CancellationToken cancellationToken)
     {
         var defaultFolders = new[]
         {

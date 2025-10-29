@@ -34,7 +34,7 @@ public interface IDocumentService
     /// <param name="uploadedBy">The user ID who uploaded the document.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The created document information.</returns>
-    Task<DocumentDto> UploadDocumentAsync(UploadDocumentDto request, IFormFile file, Guid uploadedBy, CancellationToken cancellationToken = default);
+    Task<DocumentDto> UploadDocumentAsync(UploadDocumentDto request, IFormFile file, string uploadedByEmail, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Uploads a new document with duplicate handling options.
@@ -45,7 +45,7 @@ public interface IDocumentService
     /// <param name="duplicateAction">Action to take if duplicate exists: "rename", "replace", "version".</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The created or updated document information.</returns>
-    Task<DocumentDto> UploadDocumentWithOptionsAsync(UploadDocumentDto request, IFormFile file, Guid uploadedBy, string duplicateAction = "rename", CancellationToken cancellationToken = default);
+    Task<DocumentDto> UploadDocumentWithOptionsAsync(UploadDocumentDto request, IFormFile file, string uploadedByEmail, string duplicateAction = "rename", CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Checks if a document with the specified name exists in the given folder.
@@ -82,7 +82,7 @@ public interface IDocumentService
     /// <param name="userId">The user ID performing the replacement.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The updated document information.</returns>
-    Task<DocumentDto> ReplaceDocumentAsync(Guid existingDocumentId, IFormFile newFile, Guid userId, CancellationToken cancellationToken = default);
+    Task<DocumentDto> ReplaceDocumentAsync(Guid existingDocumentId, IFormFile newFile, string userEmail, CancellationToken cancellationToken = default);
 
 
 
@@ -93,7 +93,7 @@ public interface IDocumentService
     /// <param name="updatedBy">The user ID who updated the document.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The updated document information.</returns>
-    Task<DocumentDto> UpdateDocumentAsync(UpdateDocumentDto request, Guid updatedBy, CancellationToken cancellationToken = default);
+    Task<DocumentDto> UpdateDocumentAsync(UpdateDocumentDto request, string updatedByEmail, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Downloads a document.
@@ -110,7 +110,7 @@ public interface IDocumentService
     /// <param name="deletedBy">The user ID who deleted the document.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>True if the document was deleted successfully, false otherwise.</returns>
-    Task<bool> DeleteDocumentAsync(Guid id, Guid deletedBy, CancellationToken cancellationToken = default);
+    Task<bool> DeleteDocumentAsync(Guid id, string deletedByEmail, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Moves a document to a different folder.
@@ -120,7 +120,7 @@ public interface IDocumentService
     /// <param name="movedBy">The user ID who moved the document.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The updated document information.</returns>
-    Task<DocumentDto> MoveDocumentAsync(Guid documentId, Guid targetFolderId, Guid movedBy, CancellationToken cancellationToken = default);
+    Task<DocumentDto> MoveDocumentAsync(Guid documentId, Guid targetFolderId, string movedByEmail, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Creates a new version of a document.
@@ -131,7 +131,7 @@ public interface IDocumentService
     /// <param name="uploadedBy">The user ID who uploaded the new version.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The updated document information.</returns>
-    Task<DocumentDto> CreateDocumentVersionAsync(Guid documentId, IFormFile file, string? versionComment, Guid uploadedBy, CancellationToken cancellationToken = default);
+    Task<DocumentDto> CreateDocumentVersionAsync(Guid documentId, IFormFile file, string? versionComment, string uploadedByEmail, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets all versions of a document.
@@ -167,7 +167,7 @@ public interface IDocumentService
     /// <param name="checkedOutBy">The user ID who checked out the document.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>True if the document was checked out successfully, false otherwise.</returns>
-    Task<bool> CheckOutDocumentAsync(Guid documentId, Guid checkedOutBy, CancellationToken cancellationToken = default);
+    Task<bool> CheckOutDocumentAsync(Guid documentId, string checkedOutByEmail, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Checks in a document after editing.
@@ -178,7 +178,7 @@ public interface IDocumentService
     /// <param name="checkedInBy">The user ID who checked in the document.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The updated document information.</returns>
-    Task<DocumentDto> CheckInDocumentAsync(Guid documentId, IFormFile? file, string? versionComment, Guid checkedInBy, CancellationToken cancellationToken = default);
+    Task<DocumentDto> CheckInDocumentAsync(Guid documentId, IFormFile? file, string? versionComment, string checkedInByEmail, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Cancels a document checkout.
@@ -187,5 +187,5 @@ public interface IDocumentService
     /// <param name="cancelledBy">The user ID who cancelled the checkout.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>True if the checkout was cancelled successfully, false otherwise.</returns>
-    Task<bool> CancelCheckOutAsync(Guid documentId, Guid cancelledBy, CancellationToken cancellationToken = default);
+    Task<bool> CancelCheckOutAsync(Guid documentId, string cancelledByEmail, CancellationToken cancellationToken = default);
 }

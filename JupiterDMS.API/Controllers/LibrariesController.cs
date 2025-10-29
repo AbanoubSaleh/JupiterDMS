@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using JupiterDMS.Application.Services;
 using JupiterDMS.Domain.Entities;
 using JupiterDMS.Domain.Constants;
@@ -128,18 +129,18 @@ public class LibrariesController : ControllerBase
                 return BadRequest(ModelState);
             }
 
-            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            var emailClaim = User.FindFirst(ClaimTypes.Email);
+            if (emailClaim == null || string.IsNullOrEmpty(emailClaim.Value))
             {
                 return Unauthorized();
             }
 
             // Map DTO to entity (auto-generated fields will be set in the service)
             var library = _mapper.Map<Library>(createLibraryDto);
-            var createdLibrary = await _libraryService.CreateLibraryAsync(library, userId, cancellationToken);
+            var createdLibrary = await _libraryService.CreateLibraryAsync(library, emailClaim.Value, cancellationToken);
 
-            _logger.LogInformation("Library created successfully: {LibraryName} (ID: {LibraryId}) by user {UserId}",
-                createdLibrary.Name, createdLibrary.Id, userId);
+            _logger.LogInformation("Library created successfully: {LibraryName} (ID: {LibraryId}) by user {UserEmail}",
+                createdLibrary.Name, createdLibrary.Id, emailClaim.Value);
 
             var libraryDto = _mapper.Map<LibraryDto>(createdLibrary);
             return StatusCode(StatusCodes.Status201Created, libraryDto);
@@ -183,18 +184,18 @@ public class LibrariesController : ControllerBase
                 return BadRequest(ModelState);
             }
 
-            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            var emailClaim = User.FindFirst(ClaimTypes.Email);
+            if (emailClaim == null || string.IsNullOrEmpty(emailClaim.Value))
             {
                 return Unauthorized();
             }
 
             // Map DTO to entity (auto-generated fields will be set in the service)
             var library = _mapper.Map<Library>(updateLibraryDto);
-            var updatedLibrary = await _libraryService.UpdateLibraryAsync(library, userId, cancellationToken);
+            var updatedLibrary = await _libraryService.UpdateLibraryAsync(library, emailClaim.Value, cancellationToken);
 
-            _logger.LogInformation("Library updated successfully: {LibraryName} (ID: {LibraryId}) by user {UserId}",
-                updatedLibrary.Name, updatedLibrary.Id, userId);
+            _logger.LogInformation("Library updated successfully: {LibraryName} (ID: {LibraryId}) by user {UserEmail}",
+                updatedLibrary.Name, updatedLibrary.Id, emailClaim.Value);
 
             var libraryDto = _mapper.Map<LibraryDto>(updatedLibrary);
             return Ok(libraryDto);
@@ -234,19 +235,19 @@ public class LibrariesController : ControllerBase
     {
         try
         {
-            var userIdClaim = User.FindFirst(DomainConstants.Jwt.UserIdClaimType);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            var emailClaim = User.FindFirst(ClaimTypes.Email);
+            if (emailClaim == null || string.IsNullOrEmpty(emailClaim.Value))
             {
                 return Unauthorized();
             }
 
-            var success = await _libraryService.DeleteLibraryAsync(id, userId, cancellationToken);
+            var success = await _libraryService.DeleteLibraryAsync(id, emailClaim.Value, cancellationToken);
             if (!success)
             {
                 return NotFound($"Library with ID '{id}' not found.");
             }
 
-            _logger.LogInformation("Library deleted successfully: ID {LibraryId} by user {UserId}", id, userId);
+            _logger.LogInformation("Library deleted successfully: ID {LibraryId} by user {UserEmail}", id, emailClaim.Value);
             return Ok("Library deleted successfully.");
         }
         catch (InvalidOperationException ex)

@@ -24,9 +24,9 @@ public class AuditLog : BaseEntity
     public Guid EntityId { get; set; }
 
     /// <summary>
-    /// Gets or sets the user identifier who performed the action.
+    /// Gets or sets the email of the user who performed the action.
     /// </summary>
-    public Guid UserId { get; set; }
+    public string UserEmail { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the timestamp when the action occurred.
@@ -48,9 +48,6 @@ public class AuditLog : BaseEntity
     /// </summary>
     public string? IpAddress { get; set; }
 
-    /// <summary>
-    /// Gets or sets the user who performed the action.
-    /// </summary>
-    public virtual User User { get; set; } = null!;
+
 }
 

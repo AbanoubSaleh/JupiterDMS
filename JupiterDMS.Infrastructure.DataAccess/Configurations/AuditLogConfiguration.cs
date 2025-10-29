@@ -31,8 +31,9 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
         builder.Property(a => a.EntityId)
             .IsRequired();
 
-        builder.Property(a => a.UserId)
-            .IsRequired();
+        builder.Property(a => a.UserEmail)
+            .IsRequired()
+            .HasMaxLength(DomainConstants.User.EmailMaxLength);
 
         builder.Property(a => a.Timestamp)
             .IsRequired();
@@ -54,16 +55,13 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
             .IsRequired()
             .HasDefaultValue(false);
 
-        builder.HasIndex(a => a.UserId);
+        builder.HasIndex(a => a.UserEmail);
         builder.HasIndex(a => a.EntityType);
         builder.HasIndex(a => a.EntityId);
         builder.HasIndex(a => a.Timestamp);
         builder.HasIndex(a => a.ActionType);
 
-        builder.HasOne(a => a.User)
-            .WithMany()
-            .HasForeignKey(a => a.UserId)
-            .OnDelete(DeleteBehavior.Restrict);
+
     }
 }
 
