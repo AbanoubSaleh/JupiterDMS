@@ -103,7 +103,7 @@ public class LibrariesController : Controller
 
         try
         {
-            model.CreatedBy = Guid.NewGuid(); // TODO: Get from current user
+            model.CreatedBy = "system@jupiter.com"; // TODO: Get from current user
             var result = await _apiClient.CreateLibraryAsync(model, cancellationToken);
 
             if (result != null)

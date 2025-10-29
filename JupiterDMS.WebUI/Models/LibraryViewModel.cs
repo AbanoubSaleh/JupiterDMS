@@ -91,7 +91,7 @@ public class CreateLibraryViewModel
     /// <summary>
     /// Gets or sets who is creating the library.
     /// </summary>
-    public Guid CreatedBy { get; set; }
+    public string CreatedBy { get; set; } = string.Empty;
 }
 
 /// <summary>

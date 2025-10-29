@@ -42,13 +42,13 @@ public class SearchViewModel
     /// Gets or sets the created by filter.
     /// </summary>
     [Display(Name = "Created By")]
-    public Guid? CreatedBy { get; set; }
+    public string? CreatedBy { get; set; }
 
     /// <summary>
     /// Gets or sets the modified by filter.
     /// </summary>
     [Display(Name = "Modified By")]
-    public Guid? ModifiedBy { get; set; }
+    public string? ModifiedBy { get; set; }
 
     /// <summary>
     /// Gets or sets the created from date filter.

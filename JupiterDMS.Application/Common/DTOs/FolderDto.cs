@@ -45,7 +45,7 @@ public class FolderDto
     /// <summary>
     /// Gets or sets who created the folder.
     /// </summary>
-    public Guid CreatedBy { get; set; }
+    public string CreatedBy { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets when the folder was last modified.
@@ -55,7 +55,7 @@ public class FolderDto
     /// <summary>
     /// Gets or sets who last modified the folder.
     /// </summary>
-    public Guid? ModifiedBy { get; set; }
+    public string? ModifiedBy { get; set; }
 
     /// <summary>
     /// Gets or sets whether the folder is deleted.

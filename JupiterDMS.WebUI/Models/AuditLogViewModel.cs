@@ -38,7 +38,7 @@ public class AuditLogViewModel
     /// <summary>
     /// Gets or sets who performed the action.
     /// </summary>
-    public Guid PerformedBy { get; set; }
+    public string PerformedBy { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the username of who performed the action.

@@ -35,7 +35,7 @@ public class LibraryDto
     /// <summary>
     /// Gets or sets who created the library.
     /// </summary>
-    public Guid CreatedBy { get; set; }
+    public string CreatedBy { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets when the library was last modified.
@@ -45,7 +45,7 @@ public class LibraryDto
     /// <summary>
     /// Gets or sets who last modified the library.
     /// </summary>
-    public Guid? ModifiedBy { get; set; }
+    public string? ModifiedBy { get; set; }
 
     /// <summary>
     /// Gets or sets whether the library is deleted.
