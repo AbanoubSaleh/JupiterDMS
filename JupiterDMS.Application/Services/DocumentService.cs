@@ -617,7 +617,17 @@ public class DocumentService : IDocumentService
             return false;
 
         if (document.CheckoutStatus == CheckoutStatus.CheckedOut)
-            throw new InvalidOperationException("Document is already checked out.");
+        {
+            // Idempotent behavior: if the same user requests checkout again, treat as success
+            if (!string.IsNullOrWhiteSpace(document.CheckedOutBy) &&
+                string.Equals(document.CheckedOutBy, checkedOutByEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogInformation("Idempotent checkout: Document already checked out by same user. {DocumentId} {UserEmail}", document.Id, checkedOutByEmail);
+                return true;
+            }
+            // Otherwise, it's checked out by someone else
+            throw new InvalidOperationException("Document is already checked out by another user.");
+        }
 
         document.CheckoutStatus = CheckoutStatus.CheckedOut;
         document.CheckedOutBy = checkedOutByEmail;
