@@ -31,5 +31,13 @@
     <ProjectReference Include="..\JupiterDMS.Infrastructure.Infra\JupiterDMS.Infrastructure.Infra.csproj" />
   </ItemGroup>
 
+  <!-- Include swagger.json in publish if it exists -->
+  <ItemGroup>
+    <None Include="swagger.json" Condition="Exists('swagger.json')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
 

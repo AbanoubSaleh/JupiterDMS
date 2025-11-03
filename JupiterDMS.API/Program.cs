@@ -178,14 +178,23 @@ using (var scope = app.Services.CreateScope())
     var context = scope.ServiceProvider.GetRequiredService<JupiterDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<DatabaseSeeder>>();
 
-    // Automatically apply pending migrations
-    logger.LogInformation("Applying database migrations...");
-    await context.Database.MigrateAsync();
-    logger.LogInformation("Database migrations applied successfully");
+    try
+    {
+        // Automatically apply pending migrations
+        logger.LogInformation("Applying database migrations...");
+        await context.Database.MigrateAsync();
+        logger.LogInformation("Database migrations applied successfully");
 
-    // Seed initial data
-    var seeder = new DatabaseSeeder(context, logger);
-    await seeder.SeedAsync();
+        // Seed initial data
+        var seeder = new DatabaseSeeder(context, logger);
+        await seeder.SeedAsync();
+    }
+    catch (Exception ex)
+    {
+        // Log the error but don't fail the application startup
+        // This allows the app to start even if database is not accessible during build/publish
+        logger.LogError(ex, "An error occurred while migrating or seeding the database. The application will continue to start.");
+    }
 }
 
 try
