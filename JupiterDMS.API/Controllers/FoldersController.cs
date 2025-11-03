@@ -119,9 +119,9 @@ public class FoldersController : ControllerBase
     /// <returns>The created folder.</returns>
     /// <response code="201">Folder created successfully.</response>
     /// <response code="400">Invalid request.</response>
-    /// <response code="403">Forbidden - Editor access required.</response>
+    /// <response code="403">Forbidden - Admin access required.</response>
     [HttpPost]
-    [Authorize(Policy = DomainConstants.Auth.EditorPolicy)]
+    [Authorize(Policy = DomainConstants.Auth.AdminPolicy)]
     [ProducesResponseType(typeof(FolderDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -214,9 +214,9 @@ public class FoldersController : ControllerBase
     /// <response code="200">Folder updated successfully.</response>
     /// <response code="400">Invalid request.</response>
     /// <response code="404">Folder not found.</response>
-    /// <response code="403">Forbidden - Editor access required.</response>
+    /// <response code="403">Forbidden - Admin access required.</response>
     [HttpPut]
-    [Authorize(Policy = DomainConstants.Auth.EditorPolicy)]
+    [Authorize(Policy = DomainConstants.Auth.AdminPolicy)]
     [ProducesResponseType(typeof(FolderDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -287,9 +287,9 @@ public class FoldersController : ControllerBase
     /// <returns>Success status.</returns>
     /// <response code="200">Folder deleted successfully.</response>
     /// <response code="404">Folder not found.</response>
-    /// <response code="403">Forbidden - Editor access required.</response>
+    /// <response code="403">Forbidden - Admin access required.</response>
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = DomainConstants.Auth.EditorPolicy)]
+    [Authorize(Policy = DomainConstants.Auth.AdminPolicy)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

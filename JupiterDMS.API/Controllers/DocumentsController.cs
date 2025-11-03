@@ -93,6 +93,22 @@ public class DocumentsController : ControllerBase
                 return NotFound($"Document with ID '{id}' not found.");
             }
 
+            // Set the current user email for LockedByYou calculation
+            var emailClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Email);
+            if (emailClaim != null)
+            {
+                document.CurrentUserEmail = emailClaim.Value;
+                _logger.LogInformation("🔍 GetDocumentById - CurrentUserEmail set to: {Email}", emailClaim.Value);
+            }
+            else
+            {
+                _logger.LogWarning("⚠️ GetDocumentById - No email claim found in JWT token!");
+                _logger.LogInformation("Available claims: {Claims}", string.Join(", ", User.Claims.Select(c => $"{c.Type}={c.Value}")));
+            }
+
+            _logger.LogInformation("📄 Document checkout info - CheckedOutBy: {CheckedOutBy}, CurrentUserEmail: {CurrentUserEmail}, LockedByYou: {LockedByYou}",
+                document.CheckedOutBy, document.CurrentUserEmail, document.LockedByYou);
+
             return Ok(document);
         }
         catch (Exception ex)

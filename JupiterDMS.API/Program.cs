@@ -18,7 +18,12 @@ Log.Logger = SerilogConfiguration.ConfigureLogger();
 builder.Host.UseSerilog();
 
 // Add services to the container
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Serialize enums as strings instead of numbers
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -142,6 +147,9 @@ builder.Services.AddInfra(builder.Configuration);
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
+// CORS must be before other middleware
+app.UseCors("AllowAll");
+
 // Enable Swagger in all environments (including production/deploy)
 app.UseSwagger();
 app.UseSwaggerUI(options =>
@@ -149,8 +157,9 @@ app.UseSwaggerUI(options =>
     options.SwaggerEndpoint("/swagger/v1/swagger.json", "JupiterDMS API v1");
 });
 
-app.UseHttpsRedirection();
-app.UseCors("AllowAll");
+// Note: HTTPS redirection is commented out for development
+// Uncomment when using HTTPS in production
+// app.UseHttpsRedirection();
 
 // Add exception handling middleware
 app.UseMiddleware<ExceptionHandlingMiddleware>();

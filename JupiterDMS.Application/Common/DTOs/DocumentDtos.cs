@@ -89,9 +89,28 @@ public class DocumentDto
     public CheckoutStatus CheckoutStatus { get; set; }
 
     /// <summary>
+    /// Gets whether the document is currently checked out.
+    /// </summary>
+    public bool IsCheckedOut => CheckoutStatus == CheckoutStatus.CheckedOut;
+
+    /// <summary>
     /// Gets or sets the user who checked out the document.
     /// </summary>
     public string? CheckedOutBy { get; set; }
+
+    /// <summary>
+    /// Gets or sets the current user's email (for LockedByYou calculation).
+    /// This is set by the controller and not persisted.
+    /// </summary>
+    public string? CurrentUserEmail { get; set; }
+
+    /// <summary>
+    /// Gets whether the document is locked by the current user.
+    /// </summary>
+    public bool LockedByYou => IsCheckedOut &&
+                                !string.IsNullOrEmpty(CheckedOutBy) &&
+                                !string.IsNullOrEmpty(CurrentUserEmail) &&
+                                CheckedOutBy.Equals(CurrentUserEmail, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Gets or sets the checkout date.
